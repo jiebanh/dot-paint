@@ -1,0 +1,38 @@
+{
+  "name": "dot-paint-vscode",
+  "displayName": "dot-paint",
+  "description": "Pixel / dot art editor",
+  "version": "0.0.1",
+  "private": true,
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": ["Other"],
+  "main": "./dist/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "dotPaint.editor",
+        "displayName": "Dot Paint",
+        "selector": [{ "filenamePattern": "*.dpaint" }]
+      }
+    ]
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "dev": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@dot-paint/core": "workspace:*",
+    "pngjs": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/pngjs": "^6.0.5",
+    "@types/vscode": "^1.90.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.7.2"
+  }
+}
