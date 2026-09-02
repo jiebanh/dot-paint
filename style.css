@@ -1,0 +1,96 @@
+:root {
+  --cell-size: 24px;
+  --grid-cols: 16;
+  --grid-rows: 16;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: system-ui, sans-serif;
+  margin: 0;
+  padding: 1rem;
+  background: #f5f5f5;
+  color: #222;
+}
+
+header h1 {
+  margin: 0 0 0.25rem;
+}
+
+header p {
+  margin: 0 0 1rem;
+  color: #555;
+}
+
+main {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+#grid {
+  display: grid;
+  grid-template-columns: repeat(var(--grid-cols), var(--cell-size));
+  grid-template-rows: repeat(var(--grid-rows), var(--cell-size));
+  border: 1px solid #999;
+  width: fit-content;
+  background: #fff;
+}
+
+.dot {
+  width: var(--cell-size);
+  height: var(--cell-size);
+  border: 1px solid #ddd;
+  cursor: pointer;
+  padding: 0;
+}
+
+#palette-section h2 {
+  margin-top: 0;
+}
+
+#palette {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0;
+  margin: 0 0 1rem;
+  max-width: 220px;
+}
+
+#palette li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.swatch {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.swatch.selected {
+  border-color: #222;
+}
+
+.swatch-color-input {
+  width: 36px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+}
+
+#add-color {
+  cursor: pointer;
+}

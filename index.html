@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>dot-paint</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>dot-paint</h1>
+    <p>ブラウザ上で動作するドット絵作成ツール。パレットの色を変更すると、対応するドットの色も変わります。</p>
+  </header>
+
+  <main>
+    <section id="canvas-section">
+      <div id="grid" role="grid" aria-label="dot canvas"></div>
+    </section>
+
+    <aside id="palette-section">
+      <h2>Palette</h2>
+      <ul id="palette" aria-label="color palette"></ul>
+      <button id="add-color" type="button">+ Add color</button>
+    </aside>
+  </main>
+
+  <script src="src/paintModel.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
