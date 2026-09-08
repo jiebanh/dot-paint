@@ -1,7 +1,8 @@
 import type { BrushShape } from "@dot-paint/core";
-import { createDocument, createTheme, Document, TRANSPARENT_INDEX } from "@dot-paint/core";
+import { createDocument, createTheme, Document } from "@dot-paint/core";
 import { useMemo, useState } from "react";
 import { Canvas, type PaintTool } from "./components/Canvas";
+import { PaletteEditor } from "./components/PaletteEditor";
 import { useDocument } from "./hooks/useDocument";
 
 const DEFAULT_COLORS = [
@@ -26,7 +27,6 @@ export function App() {
   const [tool, setTool] = useState<PaintTool>({ shape: "square", size: 1, paletteIndex: 1 });
 
   const activeTheme = state.themes.find((t) => t.id === state.activeThemeId)!;
-  const swatchIndices = [TRANSPARENT_INDEX, ...DEFAULT_COLORS.map((_, i) => i + 1)];
 
   return (
     <main style={{ fontFamily: "sans-serif", padding: 24 }}>
@@ -67,27 +67,12 @@ export function App() {
 
           <fieldset>
             <legend>color</legend>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, width: 108 }}>
-              {swatchIndices.map((paletteIndex) => (
-                <button
-                  key={paletteIndex}
-                  type="button"
-                  onClick={() => setTool((t) => ({ ...t, paletteIndex }))}
-                  title={paletteIndex === TRANSPARENT_INDEX ? "transparent" : activeTheme.colors[paletteIndex]}
-                  style={{
-                    width: 24,
-                    height: 24,
-                    padding: 0,
-                    background:
-                      paletteIndex === TRANSPARENT_INDEX
-                        ? "repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 0 / 8px 8px"
-                        : activeTheme.colors[paletteIndex],
-                    border: tool.paletteIndex === paletteIndex ? "2px solid #000" : "1px solid #999",
-                    cursor: "pointer",
-                  }}
-                />
-              ))}
-            </div>
+            <PaletteEditor
+              document={doc}
+              theme={activeTheme}
+              selectedIndex={tool.paletteIndex}
+              onSelect={(paletteIndex) => setTool((t) => ({ ...t, paletteIndex }))}
+            />
           </fieldset>
         </div>
       </div>
