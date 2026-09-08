@@ -3,6 +3,7 @@ import { createDocument, createTheme, Document } from "@dot-paint/core";
 import { useMemo, useState } from "react";
 import { Canvas, type PaintTool } from "./components/Canvas";
 import { PaletteEditor } from "./components/PaletteEditor";
+import { ThemeSwitcher } from "./components/ThemeSwitcher";
 import { useDocument } from "./hooks/useDocument";
 
 const DEFAULT_COLORS = [
@@ -16,9 +17,21 @@ const DEFAULT_COLORS = [
   "#e67e22",
 ];
 
+const NIGHT_COLORS = [
+  "#e8e8f0",
+  "#0d0d14",
+  "#8e2de2",
+  "#1b6ca8",
+  "#0f9b8e",
+  "#c9a227",
+  "#d63aa0",
+  "#a8471f",
+];
+
 function createDefaultDocument(): Document {
-  const theme = createTheme("default", "Default", DEFAULT_COLORS);
-  return new Document(createDocument(16, 16, [theme]));
+  const defaultTheme = createTheme("default", "Default", DEFAULT_COLORS);
+  const nightTheme = createTheme("night", "Night", NIGHT_COLORS);
+  return new Document(createDocument(16, 16, [defaultTheme, nightTheme], "default"));
 }
 
 export function App() {
@@ -73,6 +86,11 @@ export function App() {
               selectedIndex={tool.paletteIndex}
               onSelect={(paletteIndex) => setTool((t) => ({ ...t, paletteIndex }))}
             />
+          </fieldset>
+
+          <fieldset>
+            <legend>theme</legend>
+            <ThemeSwitcher document={doc} state={state} />
           </fieldset>
         </div>
       </div>

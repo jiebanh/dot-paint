@@ -66,6 +66,19 @@ export class Document {
     return () => this.listeners.delete(listener);
   }
 
+  /**
+   * Replaces the state container with a shallow clone and notifies listeners.
+   * getState() must return a new reference on every real change: React's
+   * useSyncExternalStore (see web's useDocument hook) decides whether to
+   * re-render by comparing snapshot references, so mutating this.state in
+   * place would make updates invisible until some unrelated re-render
+   * happened to read the (already stale-looking but mutated) state fresh.
+   */
+  private commit(): void {
+    this.state = { ...this.state };
+    this.notify();
+  }
+
   private notify(): void {
     for (const listener of this.listeners) listener();
   }
@@ -74,21 +87,21 @@ export class Document {
     if (diffs.length === 0) return;
     for (const diff of diffs) this.state.pixels[diff.index] = diff.newValue;
     this.history.push(diffs);
-    this.notify();
+    this.commit();
   }
 
   undo(): void {
     const diffs = this.history.undo();
     if (!diffs) return;
     for (const diff of diffs) this.state.pixels[diff.index] = diff.prevValue;
-    this.notify();
+    this.commit();
   }
 
   redo(): void {
     const diffs = this.history.redo();
     if (!diffs) return;
     for (const diff of diffs) this.state.pixels[diff.index] = diff.newValue;
-    this.notify();
+    this.commit();
   }
 
   setActiveTheme(themeId: string): void {
@@ -96,7 +109,7 @@ export class Document {
       throw new Error(`unknown theme "${themeId}"`);
     }
     this.state.activeThemeId = themeId;
-    this.notify();
+    this.commit();
   }
 
   setThemeColor(themeId: string, paletteIndex: number, color: ColorHex): void {
@@ -106,6 +119,6 @@ export class Document {
       throw new RangeError(`paletteIndex ${paletteIndex} is out of range`);
     }
     theme.colors[paletteIndex] = color;
-    this.notify();
+    this.commit();
   }
 }

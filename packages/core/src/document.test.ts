@@ -45,6 +45,31 @@ describe("Document", () => {
     expect([...doc.getState().pixels.slice(0, 2)]).toEqual([1, 1]);
   });
 
+  it("returns a new getState() reference on every mutation, so useSyncExternalStore-style consumers can detect the change", () => {
+    const doc = makeDoc();
+    doc.getState().themes.push(createTheme("alt", "Alt", ["#0000ff"]));
+
+    const beforeEdit = doc.getState();
+    doc.applyEdit([{ index: 0, prevValue: 0, newValue: 1 }]);
+    expect(doc.getState()).not.toBe(beforeEdit);
+
+    const beforeUndo = doc.getState();
+    doc.undo();
+    expect(doc.getState()).not.toBe(beforeUndo);
+
+    const beforeRedo = doc.getState();
+    doc.redo();
+    expect(doc.getState()).not.toBe(beforeRedo);
+
+    const beforeTheme = doc.getState();
+    doc.setActiveTheme("alt");
+    expect(doc.getState()).not.toBe(beforeTheme);
+
+    const beforeColor = doc.getState();
+    doc.setThemeColor("alt", 1, "#123456");
+    expect(doc.getState()).not.toBe(beforeColor);
+  });
+
   it("switching the active theme leaves pixel indices untouched", () => {
     const doc = makeDoc();
     const secondTheme = createTheme("alt", "Alt", ["#0000ff"]);
