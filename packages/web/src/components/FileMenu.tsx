@@ -1,5 +1,6 @@
 import { deserialize, Document, serialize } from "@dot-paint/core";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { loadAutosave, saveAutosave } from "../io/autosave";
 import {
   downloadDpaintFile,
   openDpaintFile,
@@ -15,6 +16,7 @@ interface FileMenuProps {
 }
 
 const DEFAULT_NAME = "untitled.dpaint";
+const AUTOSAVE_DEBOUNCE_MS = 500;
 
 export function FileMenu({ document: doc, onOpen }: FileMenuProps) {
   // File System Access API handle for the current file, when supported.
@@ -22,6 +24,47 @@ export function FileMenu({ document: doc, onOpen }: FileMenuProps) {
   // Last confirmed filename, used to save quietly (no prompt) without the API.
   const filenameRef = useRef<string | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
+  const [autoSave, setAutoSave] = useState(false);
+  const restoredRef = useRef(false);
+
+  // Restore a prior auto-save once, on mount.
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+    loadAutosave()
+      .then((record) => {
+        if (!record) return;
+        const state = deserialize(record.json);
+        filenameRef.current = record.name;
+        onOpen(new Document(state));
+      })
+      .catch(() => {
+        // best-effort restore; leave the default document in place
+      });
+  }, [onOpen]);
+
+  // While auto-save is on, persist the document (debounced) whenever it changes.
+  useEffect(() => {
+    if (!autoSave) return;
+
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const persist = () => {
+      saveAutosave({ name: filenameRef.current ?? DEFAULT_NAME, json: serialize(doc.getState()) }).catch((err) => {
+        setError(err instanceof Error ? err.message : String(err));
+      });
+    };
+
+    persist();
+    const unsubscribe = doc.subscribe(() => {
+      clearTimeout(timer);
+      timer = setTimeout(persist, AUTOSAVE_DEBOUNCE_MS);
+    });
+
+    return () => {
+      clearTimeout(timer);
+      unsubscribe();
+    };
+  }, [doc, autoSave]);
 
   async function handleOpen() {
     try {
@@ -95,6 +138,10 @@ export function FileMenu({ document: doc, onOpen }: FileMenuProps) {
       <button type="button" onClick={handleSaveAs}>
         Save As…
       </button>
+      <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <input type="checkbox" checked={autoSave} onChange={(e) => setAutoSave(e.target.checked)} />
+        Auto-save
+      </label>
       {error && <span style={{ color: "crimson" }}>{error}</span>}
     </div>
   );
