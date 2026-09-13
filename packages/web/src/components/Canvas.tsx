@@ -2,6 +2,7 @@ import type { BrushShape, CellDiff, Document } from "@dot-paint/core";
 import { render, Stroke } from "@dot-paint/core";
 import { type PointerEvent, useEffect, useRef, useState } from "react";
 import { useDocument } from "../hooks/useDocument";
+import type { ColorPreview } from "./PaletteEditor";
 
 export interface PaintTool {
   shape: BrushShape;
@@ -12,10 +13,11 @@ export interface PaintTool {
 interface CanvasProps {
   document: Document;
   tool: PaintTool;
+  colorPreview?: ColorPreview | null;
   scale?: number;
 }
 
-export function Canvas({ document: doc, tool, scale = 16 }: CanvasProps) {
+export function Canvas({ document: doc, tool, colorPreview = null, scale = 16 }: CanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const state = useDocument(doc);
   const strokeRef = useRef<Stroke | null>(null);
@@ -31,9 +33,22 @@ export function Canvas({ document: doc, tool, scale = 16 }: CanvasProps) {
       pixels = Uint8Array.from(state.pixels);
       for (const diff of previewDiffs) pixels[diff.index] = diff.newValue;
     }
-    const rgba = render({ ...state, pixels });
+
+    // A palette color being dragged live (not yet committed to the theme, so
+    // rendering it here - without touching Document - keeps a drag from
+    // producing anything undo-able until it's actually released.
+    let themes = state.themes;
+    if (colorPreview && colorPreview.themeId === state.activeThemeId) {
+      themes = state.themes.map((t) =>
+        t.id === colorPreview.themeId
+          ? { ...t, colors: t.colors.map((c, i) => (i === colorPreview.paletteIndex ? colorPreview.color : c)) }
+          : t,
+      );
+    }
+
+    const rgba = render({ ...state, pixels, themes });
     ctx.putImageData(new ImageData(rgba, state.width, state.height), 0, 0);
-  }, [state, previewDiffs]);
+  }, [state, previewDiffs, colorPreview]);
 
   function cellFromPointer(e: PointerEvent<HTMLCanvasElement>): { x: number; y: number } {
     const rect = e.currentTarget.getBoundingClientRect();

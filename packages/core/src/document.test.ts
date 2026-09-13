@@ -70,6 +70,40 @@ describe("Document", () => {
     expect(doc.getState()).not.toBe(beforeColor);
   });
 
+  it("undoes and redoes a theme color change", () => {
+    const doc = makeDoc();
+
+    doc.setThemeColor("default", 1, "#123456");
+    expect(doc.getState().themes[0].colors[1]).toBe("#123456");
+
+    doc.undo();
+    expect(doc.getState().themes[0].colors[1]).toBe("#ff0000");
+
+    doc.redo();
+    expect(doc.getState().themes[0].colors[1]).toBe("#123456");
+  });
+
+  it("does not record a color set that doesn't actually change the color", () => {
+    const doc = makeDoc();
+
+    doc.setThemeColor("default", 1, "#ff0000"); // already the current color
+    expect(doc.history.canUndo).toBe(false);
+  });
+
+  it("interleaves pixel edits and color edits in a single undo stack", () => {
+    const doc = makeDoc();
+
+    doc.applyEdit([{ index: 0, prevValue: 0, newValue: 1 }]);
+    doc.setThemeColor("default", 1, "#123456");
+
+    doc.undo(); // undoes the color change first
+    expect(doc.getState().themes[0].colors[1]).toBe("#ff0000");
+    expect(doc.getState().pixels[0]).toBe(1);
+
+    doc.undo(); // then the pixel edit
+    expect(doc.getState().pixels[0]).toBe(0);
+  });
+
   it("switching the active theme leaves pixel indices untouched", () => {
     const doc = makeDoc();
     const secondTheme = createTheme("alt", "Alt", ["#0000ff"]);

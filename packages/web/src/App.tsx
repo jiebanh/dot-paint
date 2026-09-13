@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Canvas, type PaintTool } from "./components/Canvas";
 import { FileMenu } from "./components/FileMenu";
 import { NewDocumentDialog } from "./components/NewDocumentDialog";
-import { PaletteEditor } from "./components/PaletteEditor";
+import { type ColorPreview, PaletteEditor } from "./components/PaletteEditor";
 import { ThemeSwitcher } from "./components/ThemeSwitcher";
 import { UndoRedoControls } from "./components/UndoRedoControls";
 import { useDocument } from "./hooks/useDocument";
@@ -44,6 +44,7 @@ export function App() {
   const [createError, setCreateError] = useState<string | null>(null);
   const state = useDocument(doc);
   const [tool, setTool] = useState<PaintTool>({ shape: "square", size: 1, paletteIndex: 1 });
+  const [colorPreview, setColorPreview] = useState<ColorPreview | null>(null);
 
   const activeTheme = state.themes.find((t) => t.id === state.activeThemeId)!;
 
@@ -70,7 +71,7 @@ export function App() {
       {createError && <p style={{ color: "crimson" }}>{createError}</p>}
 
       <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
-        <Canvas document={doc} tool={tool} />
+        <Canvas document={doc} tool={tool} colorPreview={colorPreview} />
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <fieldset>
@@ -106,6 +107,7 @@ export function App() {
               theme={activeTheme}
               selectedIndex={tool.paletteIndex}
               onSelect={(paletteIndex) => setTool((t) => ({ ...t, paletteIndex }))}
+              onPreview={setColorPreview}
             />
           </fieldset>
 

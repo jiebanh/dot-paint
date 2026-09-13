@@ -1,24 +1,52 @@
 import type { Document, Theme } from "@dot-paint/core";
 import { TRANSPARENT_INDEX } from "@dot-paint/core";
-import type { ChangeEvent, MouseEvent } from "react";
+import { type MouseEvent, useState } from "react";
 
 const SWATCH_SIZE = 28;
 const COLUMNS = 8;
+
+export interface ColorPreview {
+  themeId: string;
+  paletteIndex: number;
+  color: string;
+}
 
 interface PaletteEditorProps {
   document: Document;
   theme: Theme;
   selectedIndex: number;
   onSelect: (paletteIndex: number) => void;
+  onPreview: (preview: ColorPreview | null) => void;
 }
 
-export function PaletteEditor({ document: doc, theme, selectedIndex, onSelect }: PaletteEditorProps) {
+export function PaletteEditor({ document: doc, theme, selectedIndex, onSelect, onPreview }: PaletteEditorProps) {
+  // Live color while a picker is being dragged, for this component's own swatch button.
+  const [localPreview, setLocalPreview] = useState<{ paletteIndex: number; color: string } | null>(null);
+
   function stopPropagation(e: MouseEvent) {
     e.stopPropagation();
   }
 
-  function handleColorChange(paletteIndex: number, e: ChangeEvent<HTMLInputElement>) {
-    doc.setThemeColor(theme.id, paletteIndex, e.target.value);
+  /**
+   * The native `input` event fires continuously while the picker is open and
+   * dragging - used here for a live preview (this swatch + the canvas, via
+   * onPreview) without touching Document. The native `change` event fires
+   * once, when the picker closes, and is when the edit is actually committed
+   * (and becomes a single undo step) via setThemeColor.
+   */
+  function attachHandlers(paletteIndex: number) {
+    return (el: HTMLInputElement | null) => {
+      if (!el) return;
+      el.oninput = () => {
+        setLocalPreview({ paletteIndex, color: el.value });
+        onPreview({ themeId: theme.id, paletteIndex, color: el.value });
+      };
+      el.onchange = () => {
+        doc.setThemeColor(theme.id, paletteIndex, el.value);
+        setLocalPreview(null);
+        onPreview(null);
+      };
+    };
   }
 
   const indices = theme.colors.map((_, i) => i);
@@ -33,7 +61,8 @@ export function PaletteEditor({ document: doc, theme, selectedIndex, onSelect }:
     >
       {indices.map((paletteIndex) => {
         const isTransparent = paletteIndex === TRANSPARENT_INDEX;
-        const color = theme.colors[paletteIndex];
+        const committedColor = theme.colors[paletteIndex];
+        const color = localPreview?.paletteIndex === paletteIndex ? localPreview.color : committedColor;
         const selected = paletteIndex === selectedIndex;
 
         return (
@@ -56,10 +85,11 @@ export function PaletteEditor({ document: doc, theme, selectedIndex, onSelect }:
             />
             {!isTransparent && (
               <input
+                key={committedColor} // remount to resync when the committed color changes externally (e.g. undo)
+                ref={attachHandlers(paletteIndex)}
                 type="color"
-                value={color}
+                defaultValue={committedColor}
                 onClick={stopPropagation}
-                onChange={(e) => handleColorChange(paletteIndex, e)}
                 title="edit color"
                 style={{
                   position: "absolute",

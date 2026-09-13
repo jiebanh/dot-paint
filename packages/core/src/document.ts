@@ -44,6 +44,21 @@ export interface CellDiff {
   newValue: number;
 }
 
+interface PixelEdit {
+  type: "pixels";
+  diffs: CellDiff[];
+}
+
+interface ThemeColorEdit {
+  type: "themeColor";
+  themeId: string;
+  paletteIndex: number;
+  prevColor: ColorHex;
+  newColor: ColorHex;
+}
+
+type HistoryEntry = PixelEdit | ThemeColorEdit;
+
 /**
  * Mutable wrapper around a DotDocument. Framework-agnostic: web binds to it via
  * useSyncExternalStore, the VSCode extension host drives it directly.
@@ -51,7 +66,7 @@ export interface CellDiff {
 export class Document {
   private state: DotDocument;
   private listeners = new Set<() => void>();
-  readonly history = new HistoryManager<CellDiff[]>();
+  readonly history = new HistoryManager<HistoryEntry>();
 
   constructor(initial: DotDocument) {
     this.state = initial;
@@ -86,22 +101,34 @@ export class Document {
   applyEdit(diffs: CellDiff[]): void {
     if (diffs.length === 0) return;
     for (const diff of diffs) this.state.pixels[diff.index] = diff.newValue;
-    this.history.push(diffs);
+    this.history.push({ type: "pixels", diffs });
     this.commit();
   }
 
   undo(): void {
-    const diffs = this.history.undo();
-    if (!diffs) return;
-    for (const diff of diffs) this.state.pixels[diff.index] = diff.prevValue;
+    const entry = this.history.undo();
+    if (!entry) return;
+    this.applyHistoryEntry(entry, "undo");
     this.commit();
   }
 
   redo(): void {
-    const diffs = this.history.redo();
-    if (!diffs) return;
-    for (const diff of diffs) this.state.pixels[diff.index] = diff.newValue;
+    const entry = this.history.redo();
+    if (!entry) return;
+    this.applyHistoryEntry(entry, "redo");
     this.commit();
+  }
+
+  private applyHistoryEntry(entry: HistoryEntry, direction: "undo" | "redo"): void {
+    if (entry.type === "pixels") {
+      for (const diff of entry.diffs) {
+        this.state.pixels[diff.index] = direction === "undo" ? diff.prevValue : diff.newValue;
+      }
+      return;
+    }
+    const theme = this.state.themes.find((t) => t.id === entry.themeId);
+    if (!theme) return; // the theme no longer exists; nothing sane to restore
+    theme.colors[entry.paletteIndex] = direction === "undo" ? entry.prevColor : entry.newColor;
   }
 
   setActiveTheme(themeId: string): void {
@@ -118,7 +145,10 @@ export class Document {
     if (paletteIndex < 1 || paletteIndex >= theme.colors.length) {
       throw new RangeError(`paletteIndex ${paletteIndex} is out of range`);
     }
+    const prevColor = theme.colors[paletteIndex];
+    if (prevColor === color) return;
     theme.colors[paletteIndex] = color;
+    this.history.push({ type: "themeColor", themeId, paletteIndex, prevColor, newColor: color });
     this.commit();
   }
 }
