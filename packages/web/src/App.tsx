@@ -2,6 +2,7 @@ import type { BrushShape, Theme } from "@dot-paint/core";
 import { createDocument, createTheme, Document } from "@dot-paint/core";
 import { useState } from "react";
 import { Canvas, type PaintTool } from "./components/Canvas";
+import { FileMenu } from "./components/FileMenu";
 import { NewDocumentDialog } from "./components/NewDocumentDialog";
 import { PaletteEditor } from "./components/PaletteEditor";
 import { ThemeSwitcher } from "./components/ThemeSwitcher";
@@ -59,8 +60,11 @@ export function App() {
       <h1>dot-paint</h1>
       <p>
         {state.width}×{state.height}, theme "{state.activeThemeId}"
-        <NewDocumentDialog onCreate={handleCreate} />
       </p>
+      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+        <NewDocumentDialog onCreate={handleCreate} />
+        <FileMenu document={doc} onOpen={setDoc} />
+      </div>
       {createError && <p style={{ color: "crimson" }}>{createError}</p>}
 
       <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
