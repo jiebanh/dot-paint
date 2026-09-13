@@ -1,8 +1,9 @@
 import type { BrushShape } from "@dot-paint/core";
-import { createDocument, deserialize, Document, serialize } from "@dot-paint/core";
+import { createDocument, deserialize, Document, serialize, TRANSPARENT_INDEX } from "@dot-paint/core";
 import { useEffect, useState } from "react";
 import { BUILT_IN_THEMES } from "./builtInThemes";
 import { Canvas, type PaintTool } from "./components/Canvas";
+import { ColorPickerPanel } from "./components/ColorPickerPanel";
 import { FileMenu } from "./components/FileMenu";
 import { NewDocumentDialog } from "./components/NewDocumentDialog";
 import { type ColorPreview, PaletteEditor } from "./components/PaletteEditor";
@@ -87,6 +88,17 @@ export function App() {
         <Canvas document={doc} tool={tool} colorPreview={colorPreview} />
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <ColorPickerPanel
+            paletteIndex={tool.paletteIndex}
+            color={state.theme.colors[tool.paletteIndex]}
+            disabled={tool.paletteIndex === TRANSPARENT_INDEX}
+            onPreview={(color) => setColorPreview({ paletteIndex: tool.paletteIndex, color })}
+            onCommit={(color) => {
+              doc.setThemeColor(tool.paletteIndex, color);
+              setColorPreview(null);
+            }}
+          />
+
           <fieldset>
             <legend>brush</legend>
             {(["square", "circle"] as BrushShape[]).map((shape) => (
@@ -116,11 +128,10 @@ export function App() {
           <fieldset>
             <legend>color</legend>
             <PaletteEditor
-              document={doc}
               theme={state.theme}
               selectedIndex={tool.paletteIndex}
               onSelect={(paletteIndex) => setTool((t) => ({ ...t, paletteIndex }))}
-              onPreview={setColorPreview}
+              colorPreview={colorPreview}
             />
           </fieldset>
 
