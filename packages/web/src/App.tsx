@@ -1,6 +1,6 @@
 import type { BrushShape, Theme } from "@dot-paint/core";
-import { createDocument, createTheme, Document } from "@dot-paint/core";
-import { useState } from "react";
+import { createDocument, createTheme, deserialize, Document, serialize } from "@dot-paint/core";
+import { useEffect, useState } from "react";
 import { Canvas, type PaintTool } from "./components/Canvas";
 import { FileMenu } from "./components/FileMenu";
 import { NewDocumentDialog } from "./components/NewDocumentDialog";
@@ -8,6 +8,18 @@ import { type ColorPreview, PaletteEditor } from "./components/PaletteEditor";
 import { ThemeSwitcher } from "./components/ThemeSwitcher";
 import { UndoRedoControls } from "./components/UndoRedoControls";
 import { useDocument } from "./hooks/useDocument";
+import { isVsCodeWebview, onHostMessage, postToHost } from "./io/vscodeBridge";
+
+const VSCODE_SYNC_DEBOUNCE_MS = 300;
+
+function isInitMessage(message: unknown): message is { type: "init"; json: string } {
+  return (
+    typeof message === "object" &&
+    message !== null &&
+    (message as { type?: unknown }).type === "init" &&
+    typeof (message as { json?: unknown }).json === "string"
+  );
+}
 
 const DEFAULT_COLORS = [
   "#1a1a1a",
@@ -48,6 +60,34 @@ export function App() {
 
   const activeTheme = state.themes.find((t) => t.id === state.activeThemeId)!;
 
+  // In a VSCode webview, the extension host owns the file; it sends the real
+  // content once this reports "ready" (a fresh blank canvas is just the
+  // placeholder until that arrives).
+  useEffect(() => {
+    if (!isVsCodeWebview()) return;
+    const unsubscribe = onHostMessage((message) => {
+      if (isInitMessage(message)) setDoc(new Document(deserialize(message.json)));
+    });
+    postToHost({ type: "ready" });
+    return unsubscribe;
+  }, []);
+
+  // Report edits back to the host (debounced) so it can track dirty state and
+  // know what to write on save - editing itself stays entirely in the webview.
+  useEffect(() => {
+    if (!isVsCodeWebview()) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const send = () => postToHost({ type: "changed", json: serialize(doc.getState()) });
+    const unsubscribe = doc.subscribe(() => {
+      clearTimeout(timer);
+      timer = setTimeout(send, VSCODE_SYNC_DEBOUNCE_MS);
+    });
+    return () => {
+      clearTimeout(timer);
+      unsubscribe();
+    };
+  }, [doc]);
+
   function handleCreate(width: number, height: number) {
     try {
       setDoc(createDefaultDocument(width, height));
@@ -65,7 +105,7 @@ export function App() {
       </p>
       <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
         <NewDocumentDialog onCreate={handleCreate} />
-        <FileMenu document={doc} onOpen={setDoc} />
+        {!isVsCodeWebview() && <FileMenu document={doc} onOpen={setDoc} />}
         <UndoRedoControls document={doc} />
       </div>
       {createError && <p style={{ color: "crimson" }}>{createError}</p>}
