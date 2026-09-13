@@ -17,18 +17,26 @@ type HostToWebviewMessage = { type: "init"; json: string };
  *   what to write on save.
  */
 export class DotPaintEditorProvider implements vscode.CustomEditorProvider<DotPaintDocument> {
-  static register(context: vscode.ExtensionContext): vscode.Disposable {
-    return vscode.window.registerCustomEditorProvider("dotPaint.editor", new DotPaintEditorProvider(context), {
+  static create(context: vscode.ExtensionContext): { provider: DotPaintEditorProvider; disposable: vscode.Disposable } {
+    const provider = new DotPaintEditorProvider(context);
+    const disposable = vscode.window.registerCustomEditorProvider("dotPaint.editor", provider, {
       webviewOptions: { retainContextWhenHidden: true },
     });
+    return { provider, disposable };
   }
 
   private readonly changeEmitter = new vscode.EventEmitter<vscode.CustomDocumentContentChangeEvent<DotPaintDocument>>();
   readonly onDidChangeCustomDocument = this.changeEmitter.event;
 
   private readonly panelsByDocument = new Map<DotPaintDocument, Set<vscode.WebviewPanel>>();
+  private activeDocument: DotPaintDocument | undefined;
 
   private constructor(private readonly context: vscode.ExtensionContext) {}
+
+  /** The document behind the currently focused dot-paint editor tab, if any - used by the Export PNG command. */
+  getActiveDocument(): DotPaintDocument | undefined {
+    return this.activeDocument;
+  }
 
   async openCustomDocument(uri: vscode.Uri): Promise<DotPaintDocument> {
     return DotPaintDocument.create(uri);
@@ -42,7 +50,15 @@ export class DotPaintEditorProvider implements vscode.CustomEditorProvider<DotPa
     const panels = this.panelsByDocument.get(doc) ?? new Set<vscode.WebviewPanel>();
     panels.add(webviewPanel);
     this.panelsByDocument.set(doc, panels);
-    webviewPanel.onDidDispose(() => panels.delete(webviewPanel));
+
+    if (webviewPanel.active) this.activeDocument = doc;
+    webviewPanel.onDidChangeViewState(() => {
+      if (webviewPanel.active) this.activeDocument = doc;
+    });
+    webviewPanel.onDidDispose(() => {
+      panels.delete(webviewPanel);
+      if (this.activeDocument === doc && panels.size === 0) this.activeDocument = undefined;
+    });
 
     webviewPanel.webview.onDidReceiveMessage((message: WebviewToHostMessage) => {
       if (message.type === "ready") {

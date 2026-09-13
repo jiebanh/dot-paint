@@ -17,7 +17,23 @@
         "displayName": "Dot Paint",
         "selector": [{ "filenamePattern": "*.dpaint" }]
       }
-    ]
+    ],
+    "commands": [
+      {
+        "command": "dotPaint.exportPng",
+        "title": "Dot Paint: Export as PNG",
+        "icon": "$(file-media)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "dotPaint.exportPng",
+          "when": "activeCustomEditorId == 'dotPaint.editor'",
+          "group": "navigation"
+        }
+      ]
+    }
   },
   "scripts": {
     "build": "node esbuild.mjs",
