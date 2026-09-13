@@ -1,7 +1,8 @@
-import type { BrushShape } from "@dot-paint/core";
+import type { BrushShape, Theme } from "@dot-paint/core";
 import { createDocument, createTheme, Document } from "@dot-paint/core";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Canvas, type PaintTool } from "./components/Canvas";
+import { NewDocumentDialog } from "./components/NewDocumentDialog";
 import { PaletteEditor } from "./components/PaletteEditor";
 import { ThemeSwitcher } from "./components/ThemeSwitcher";
 import { useDocument } from "./hooks/useDocument";
@@ -28,25 +29,39 @@ const NIGHT_COLORS = [
   "#a8471f",
 ];
 
-function createDefaultDocument(): Document {
-  const defaultTheme = createTheme("default", "Default", DEFAULT_COLORS);
-  const nightTheme = createTheme("night", "Night", NIGHT_COLORS);
-  return new Document(createDocument(16, 16, [defaultTheme, nightTheme], "default"));
+function createDefaultThemes(): Theme[] {
+  return [createTheme("default", "Default", DEFAULT_COLORS), createTheme("night", "Night", NIGHT_COLORS)];
+}
+
+function createDefaultDocument(width = 16, height = 16): Document {
+  return new Document(createDocument(width, height, createDefaultThemes(), "default"));
 }
 
 export function App() {
-  const doc = useMemo(() => createDefaultDocument(), []);
+  const [doc, setDoc] = useState<Document>(() => createDefaultDocument());
+  const [createError, setCreateError] = useState<string | null>(null);
   const state = useDocument(doc);
   const [tool, setTool] = useState<PaintTool>({ shape: "square", size: 1, paletteIndex: 1 });
 
   const activeTheme = state.themes.find((t) => t.id === state.activeThemeId)!;
+
+  function handleCreate(width: number, height: number) {
+    try {
+      setDoc(createDefaultDocument(width, height));
+      setCreateError(null);
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : String(err));
+    }
+  }
 
   return (
     <main style={{ fontFamily: "sans-serif", padding: 24 }}>
       <h1>dot-paint</h1>
       <p>
         {state.width}×{state.height}, theme "{state.activeThemeId}"
+        <NewDocumentDialog onCreate={handleCreate} />
       </p>
+      {createError && <p style={{ color: "crimson" }}>{createError}</p>}
 
       <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
         <Canvas document={doc} tool={tool} />
