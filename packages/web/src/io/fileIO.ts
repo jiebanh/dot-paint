@@ -71,13 +71,6 @@ export async function pickSaveHandle(
   }
 }
 
-/** Always asks the user to confirm/change a filename. Returns null if they cancel. */
-export function promptFileName(suggestedName: string): string | null {
-  const input = window.prompt("Save as:", suggestedName);
-  if (!input) return null;
-  return input.endsWith(".dpaint") ? input : `${input}.dpaint`;
-}
-
 /** Downloads under an already-known filename, no prompt. */
 export function downloadDpaintFile(json: string, filename: string): void {
   downloadBlob(new Blob([json], { type: "application/json" }), filename);
