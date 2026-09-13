@@ -1,5 +1,5 @@
 import { HistoryManager } from "./history";
-import type { ColorHex, Theme } from "./theme";
+import { cloneTheme, type ColorHex, type Theme } from "./theme";
 
 export const MAX_SIZE = 512;
 
@@ -26,7 +26,7 @@ export function createDocument(width: number, height: number, theme: Theme): Dot
     width,
     height,
     pixels: new Uint8Array(width * height),
-    theme,
+    theme: cloneTheme(theme),
   };
 }
 
@@ -134,8 +134,9 @@ export class Document {
   applyTheme(theme: Theme): void {
     const prevTheme = this.state.theme;
     if (prevTheme.id === theme.id && colorsEqual(prevTheme.colors, theme.colors)) return;
-    this.state.theme = theme;
-    this.history.push({ type: "themeApplied", prevTheme, newTheme: theme });
+    const newTheme = cloneTheme(theme);
+    this.state.theme = newTheme;
+    this.history.push({ type: "themeApplied", prevTheme, newTheme });
     this.commit();
   }
 

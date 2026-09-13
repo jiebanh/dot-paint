@@ -1,6 +1,7 @@
 import type { BrushShape } from "@dot-paint/core";
-import { createDocument, createTheme, deserialize, Document, serialize } from "@dot-paint/core";
+import { createDocument, deserialize, Document, serialize } from "@dot-paint/core";
 import { useEffect, useState } from "react";
+import { BUILT_IN_THEMES } from "./builtInThemes";
 import { Canvas, type PaintTool } from "./components/Canvas";
 import { FileMenu } from "./components/FileMenu";
 import { NewDocumentDialog } from "./components/NewDocumentDialog";
@@ -21,20 +22,8 @@ function isInitMessage(message: unknown): message is { type: "init"; json: strin
   );
 }
 
-const DEFAULT_COLORS = [
-  "#1a1a1a",
-  "#ffffff",
-  "#e74c3c",
-  "#3498db",
-  "#2ecc71",
-  "#f1c40f",
-  "#9b59b6",
-  "#e67e22",
-];
-
 function createDefaultDocument(width = 16, height = 16): Document {
-  const theme = createTheme("default", "Default", DEFAULT_COLORS);
-  return new Document(createDocument(width, height, theme));
+  return new Document(createDocument(width, height, BUILT_IN_THEMES[0]));
 }
 
 export function App() {

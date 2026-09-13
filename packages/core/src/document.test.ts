@@ -124,4 +124,17 @@ describe("Document", () => {
 
     expect(doc.history.canUndo).toBe(false);
   });
+
+  it("never mutates the Theme objects it was constructed or applied with, so a shared preset (e.g. a built-in theme) can't be corrupted by editing one document's colors", () => {
+    const sourceTheme = createTheme("shared", "Shared", ["#ff0000"]);
+    const doc = new Document(createDocument(2, 2, sourceTheme));
+
+    doc.setThemeColor(1, "#123456");
+    expect(sourceTheme.colors[1]).toBe("#ff0000");
+
+    const libraryTheme = createTheme("library", "Library", ["#00ff00"]);
+    doc.applyTheme(libraryTheme);
+    doc.setThemeColor(1, "#654321");
+    expect(libraryTheme.colors[1]).toBe("#00ff00");
+  });
 });

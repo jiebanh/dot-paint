@@ -17,6 +17,11 @@ export interface Theme {
   colors: ColorHex[];
 }
 
+/** Deep-copies a theme so a document can own it without risking mutating the caller's original (e.g. a built-in preset). */
+export function cloneTheme(theme: Theme): Theme {
+  return { id: theme.id, name: theme.name, colors: [...theme.colors] };
+}
+
 export function generateThemeId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
   return `theme-${Date.now()}-${Math.random().toString(36).slice(2)}`;
