@@ -6,6 +6,7 @@ import { FileMenu } from "./components/FileMenu";
 import { NewDocumentDialog } from "./components/NewDocumentDialog";
 import { PaletteEditor } from "./components/PaletteEditor";
 import { ThemeSwitcher } from "./components/ThemeSwitcher";
+import { UndoRedoControls } from "./components/UndoRedoControls";
 import { useDocument } from "./hooks/useDocument";
 
 const DEFAULT_COLORS = [
@@ -64,6 +65,7 @@ export function App() {
       <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
         <NewDocumentDialog onCreate={handleCreate} />
         <FileMenu document={doc} onOpen={setDoc} />
+        <UndoRedoControls document={doc} />
       </div>
       {createError && <p style={{ color: "crimson" }}>{createError}</p>}
 
