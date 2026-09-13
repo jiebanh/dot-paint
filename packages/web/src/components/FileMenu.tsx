@@ -2,6 +2,7 @@ import { deserialize, Document, serialize } from "@dot-paint/core";
 import { useEffect, useRef, useState } from "react";
 import { loadAutosave, saveAutosave } from "../io/autosave";
 import {
+  DPAINT_PICKER_TYPES,
   downloadDpaintFile,
   openDpaintFile,
   pickSaveHandle,
@@ -10,6 +11,7 @@ import {
   writeToHandle,
 } from "../io/fileIO";
 import { exportPng } from "../io/pngExport";
+import { type SaveFormat, SaveAsDialog } from "./SaveAsDialog";
 
 interface FileMenuProps {
   document: Document;
@@ -81,62 +83,62 @@ export function FileMenu({ document: doc, onOpen }: FileMenuProps) {
     }
   }
 
-  /** Resolves a destination and writes to it. `forcePrompt` makes "Save As" always ask, even when one is already known. */
-  async function saveTo(forcePrompt: boolean) {
-    const json = serialize(doc.getState());
-
-    if (!forcePrompt && handleRef.current) {
-      await writeToHandle(handleRef.current, json);
-      return;
-    }
-
-    if (supportsFileSystemAccess()) {
-      const handle = await pickSaveHandle(filenameRef.current ?? DEFAULT_NAME);
-      if (!handle) return; // user cancelled
-      await writeToHandle(handle, json);
-      handleRef.current = handle;
-      filenameRef.current = handle.name;
-      return;
-    }
-
-    if (!forcePrompt && filenameRef.current) {
-      downloadDpaintFile(json, filenameRef.current);
-      return;
-    }
-
-    const name = promptFileName(filenameRef.current ?? DEFAULT_NAME);
-    if (name === null) return; // user cancelled
-    downloadDpaintFile(json, name);
-    filenameRef.current = name;
-  }
-
+  /** Writes back to the known file, resolving a destination first if none is known yet. Always .dpaint. */
   async function handleSave() {
     try {
-      await saveTo(false);
+      const json = serialize(doc.getState());
+
+      if (handleRef.current) {
+        await writeToHandle(handleRef.current, json);
+      } else if (supportsFileSystemAccess()) {
+        const handle = await pickSaveHandle(filenameRef.current ?? DEFAULT_NAME, DPAINT_PICKER_TYPES);
+        if (!handle) return; // user cancelled
+        await writeToHandle(handle, json);
+        handleRef.current = handle;
+        filenameRef.current = handle.name;
+      } else if (filenameRef.current) {
+        downloadDpaintFile(json, filenameRef.current);
+      } else {
+        const name = promptFileName(DEFAULT_NAME);
+        if (name === null) return; // user cancelled
+        downloadDpaintFile(json, name);
+        filenameRef.current = name;
+      }
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
   }
 
-  async function handleSaveAs() {
+  /** Always resolves a new destination, in the name/format the user chose in the dialog. */
+  async function handleSaveAs(name: string, format: SaveFormat) {
     try {
-      await saveTo(true);
+      if (format === "png") {
+        await exportPng(doc.getState(), name);
+        setError(null);
+        return;
+      }
+
+      const fullName = name.endsWith(".dpaint") ? name : `${name}.dpaint`;
+      const json = serialize(doc.getState());
+
+      if (supportsFileSystemAccess()) {
+        const handle = await pickSaveHandle(fullName, DPAINT_PICKER_TYPES);
+        if (!handle) return; // user cancelled
+        await writeToHandle(handle, json);
+        handleRef.current = handle;
+        filenameRef.current = handle.name;
+      } else {
+        downloadDpaintFile(json, fullName);
+        filenameRef.current = fullName;
+      }
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
   }
 
-  async function handleExportPng() {
-    try {
-      const name = (filenameRef.current ?? DEFAULT_NAME).replace(/\.dpaint$/, "");
-      await exportPng(doc.getState(), name);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  }
+  const suggestedName = (filenameRef.current ?? DEFAULT_NAME).replace(/\.dpaint$/, "");
 
   return (
     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -146,12 +148,7 @@ export function FileMenu({ document: doc, onOpen }: FileMenuProps) {
       <button type="button" onClick={handleSave}>
         Save
       </button>
-      <button type="button" onClick={handleSaveAs}>
-        Save As…
-      </button>
-      <button type="button" onClick={handleExportPng}>
-        Export PNG…
-      </button>
+      <SaveAsDialog suggestedName={suggestedName} onSave={handleSaveAs} />
       <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
         <input type="checkbox" checked={autoSave} onChange={(e) => setAutoSave(e.target.checked)} />
         Auto-save

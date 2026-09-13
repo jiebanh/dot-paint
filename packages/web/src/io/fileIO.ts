@@ -4,10 +4,10 @@ export interface OpenResult {
   handle?: FileSystemFileHandle;
 }
 
-const PICKER_TYPES = [
+export const DPAINT_PICKER_TYPES: FilePickerAcceptType[] = [
   {
     description: "dot-paint document",
-    accept: { "application/json": [".dpaint"] as `.${string}`[] },
+    accept: { "application/json": [".dpaint"] },
   },
 ];
 
@@ -23,7 +23,7 @@ export async function openDpaintFile(): Promise<OpenResult | null> {
   if (supportsFileSystemAccess()) {
     let handles: FileSystemFileHandle[];
     try {
-      handles = await window.showOpenFilePicker({ types: PICKER_TYPES });
+      handles = await window.showOpenFilePicker({ types: DPAINT_PICKER_TYPES });
     } catch (err) {
       if (isAbortError(err)) return null;
       throw err;
@@ -61,7 +61,7 @@ export async function writeToHandle(handle: FileSystemFileHandle, data: string |
 /** Always asks the user to choose a destination. Returns undefined if they cancel. */
 export async function pickSaveHandle(
   suggestedName: string,
-  types: FilePickerAcceptType[] = PICKER_TYPES,
+  types: FilePickerAcceptType[] = DPAINT_PICKER_TYPES,
 ): Promise<FileSystemFileHandle | undefined> {
   try {
     return await window.showSaveFilePicker({ suggestedName, types });
