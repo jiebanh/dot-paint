@@ -1,10 +1,20 @@
+import { readFileSync } from "node:fs";
 import * as vscode from "vscode";
 import { DotPaintDocument } from "./dotPaintDocument";
 
+type WebviewToHostMessage = { type: "ready" } | { type: "changed"; json: string };
+type HostToWebviewMessage = { type: "init"; json: string };
+
 /**
- * Scaffold only: opens/saves .dpaint files and shows a placeholder webview.
- * Wiring the real canvas UI (the packages/web bundle) into the webview, plus
- * the postMessage bridge for edits and PNG export, is a follow-up step.
+ * Loads the packages/web build (copied into dist/webview by esbuild.mjs) into
+ * the webview and bridges it to the extension host over postMessage:
+ * - host -> webview "init": the current .dpaint content, sent once the
+ *   webview reports "ready" (avoids a race where the host posts before the
+ *   page has attached its listener).
+ * - webview -> host "changed": the webview's own core.Document is the editor
+ *   of record: it owns painting, undo/redo, everything. This just reports the
+ *   latest serialized content so the host can mark the tab dirty and know
+ *   what to write on save.
  */
 export class DotPaintEditorProvider implements vscode.CustomEditorProvider<DotPaintDocument> {
   static register(context: vscode.ExtensionContext): vscode.Disposable {
@@ -13,8 +23,10 @@ export class DotPaintEditorProvider implements vscode.CustomEditorProvider<DotPa
     });
   }
 
-  private readonly changeEmitter = new vscode.EventEmitter<vscode.CustomDocumentEditEvent<DotPaintDocument>>();
+  private readonly changeEmitter = new vscode.EventEmitter<vscode.CustomDocumentContentChangeEvent<DotPaintDocument>>();
   readonly onDidChangeCustomDocument = this.changeEmitter.event;
+
+  private readonly panelsByDocument = new Map<DotPaintDocument, Set<vscode.WebviewPanel>>();
 
   private constructor(private readonly context: vscode.ExtensionContext) {}
 
@@ -23,8 +35,23 @@ export class DotPaintEditorProvider implements vscode.CustomEditorProvider<DotPa
   }
 
   async resolveCustomEditor(doc: DotPaintDocument, webviewPanel: vscode.WebviewPanel): Promise<void> {
-    webviewPanel.webview.options = { enableScripts: true };
-    webviewPanel.webview.html = this.renderPlaceholder(doc);
+    const webviewRoot = vscode.Uri.joinPath(this.context.extensionUri, "dist", "webview");
+    webviewPanel.webview.options = { enableScripts: true, localResourceRoots: [webviewRoot] };
+    webviewPanel.webview.html = this.renderHtml(webviewPanel.webview, webviewRoot);
+
+    const panels = this.panelsByDocument.get(doc) ?? new Set<vscode.WebviewPanel>();
+    panels.add(webviewPanel);
+    this.panelsByDocument.set(doc, panels);
+    webviewPanel.onDidDispose(() => panels.delete(webviewPanel));
+
+    webviewPanel.webview.onDidReceiveMessage((message: WebviewToHostMessage) => {
+      if (message.type === "ready") {
+        webviewPanel.webview.postMessage({ type: "init", json: doc.getContent() } satisfies HostToWebviewMessage);
+      } else if (message.type === "changed") {
+        doc.setContent(message.json);
+        this.changeEmitter.fire({ document: doc });
+      }
+    });
   }
 
   async saveCustomDocument(doc: DotPaintDocument): Promise<void> {
@@ -37,7 +64,10 @@ export class DotPaintEditorProvider implements vscode.CustomEditorProvider<DotPa
 
   async revertCustomDocument(doc: DotPaintDocument): Promise<void> {
     const reloaded = await DotPaintDocument.create(doc.uri);
-    doc.document.getState().pixels.set(reloaded.document.getState().pixels);
+    doc.setContent(reloaded.getContent());
+    for (const panel of this.panelsByDocument.get(doc) ?? []) {
+      panel.webview.postMessage({ type: "init", json: doc.getContent() } satisfies HostToWebviewMessage);
+    }
   }
 
   async backupCustomDocument(
@@ -57,14 +87,22 @@ export class DotPaintEditorProvider implements vscode.CustomEditorProvider<DotPa
     };
   }
 
-  private renderPlaceholder(doc: DotPaintDocument): string {
-    const state = doc.document.getState();
-    return `<!doctype html>
-<html>
-  <body style="font-family: sans-serif; padding: 1rem;">
-    <p>dot-paint editor scaffold &mdash; ${state.width}×${state.height}, theme "${state.activeThemeId}"</p>
-    <p>The full canvas UI (packages/web bundle) is not wired in yet.</p>
-  </body>
-</html>`;
+  private renderHtml(webview: vscode.Webview, webviewRoot: vscode.Uri): string {
+    const indexPath = vscode.Uri.joinPath(webviewRoot, "index.html");
+    let html = readFileSync(indexPath.fsPath, "utf-8");
+
+    html = html.replace(/(src|href)="(\.[^"]+)"/g, (_match, attr: string, relPath: string) => {
+      const uri = webview.asWebviewUri(vscode.Uri.joinPath(webviewRoot, relPath));
+      return `${attr}="${uri.toString()}"`;
+    });
+
+    const csp = [
+      "default-src 'none'",
+      `img-src ${webview.cspSource} data:`,
+      `style-src ${webview.cspSource} 'unsafe-inline'`,
+      `script-src ${webview.cspSource}`,
+    ].join("; ");
+
+    return html.replace("<head>", `<head>\n    <meta http-equiv="Content-Security-Policy" content="${csp}">`);
   }
 }
