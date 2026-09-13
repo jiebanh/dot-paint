@@ -52,16 +52,19 @@ function openViaInput(): Promise<OpenResult | null> {
   });
 }
 
-export async function writeToHandle(handle: FileSystemFileHandle, json: string): Promise<void> {
+export async function writeToHandle(handle: FileSystemFileHandle, data: string | Blob): Promise<void> {
   const writable = await handle.createWritable();
-  await writable.write(json);
+  await writable.write(data);
   await writable.close();
 }
 
 /** Always asks the user to choose a destination. Returns undefined if they cancel. */
-export async function pickSaveHandle(suggestedName: string): Promise<FileSystemFileHandle | undefined> {
+export async function pickSaveHandle(
+  suggestedName: string,
+  types: FilePickerAcceptType[] = PICKER_TYPES,
+): Promise<FileSystemFileHandle | undefined> {
   try {
-    return await window.showSaveFilePicker({ suggestedName, types: PICKER_TYPES });
+    return await window.showSaveFilePicker({ suggestedName, types });
   } catch (err) {
     if (isAbortError(err)) return undefined;
     throw err;
@@ -77,7 +80,10 @@ export function promptFileName(suggestedName: string): string | null {
 
 /** Downloads under an already-known filename, no prompt. */
 export function downloadDpaintFile(json: string, filename: string): void {
-  const blob = new Blob([json], { type: "application/json" });
+  downloadBlob(new Blob([json], { type: "application/json" }), filename);
+}
+
+export function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

@@ -9,6 +9,7 @@ import {
   supportsFileSystemAccess,
   writeToHandle,
 } from "../io/fileIO";
+import { exportPng } from "../io/pngExport";
 
 interface FileMenuProps {
   document: Document;
@@ -127,6 +128,16 @@ export function FileMenu({ document: doc, onOpen }: FileMenuProps) {
     }
   }
 
+  async function handleExportPng() {
+    try {
+      const name = (filenameRef.current ?? DEFAULT_NAME).replace(/\.dpaint$/, "");
+      await exportPng(doc.getState(), name);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   return (
     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
       <button type="button" onClick={handleOpen}>
@@ -137,6 +148,9 @@ export function FileMenu({ document: doc, onOpen }: FileMenuProps) {
       </button>
       <button type="button" onClick={handleSaveAs}>
         Save As…
+      </button>
+      <button type="button" onClick={handleExportPng}>
+        Export PNG…
       </button>
       <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
         <input type="checkbox" checked={autoSave} onChange={(e) => setAutoSave(e.target.checked)} />
