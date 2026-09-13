@@ -4,18 +4,14 @@ import { createTheme } from "./theme";
 
 function makeDoc(width = 4, height = 4) {
   const theme = createTheme("default", "Default", ["#ff0000", "#00ff00"]);
-  return new Document(createDocument(width, height, [theme]));
+  return new Document(createDocument(width, height, theme));
 }
 
 describe("createDocument", () => {
   it("rejects sizes outside 1..MAX_SIZE", () => {
     const theme = createTheme("t", "T", []);
-    expect(() => createDocument(0, 10, [theme])).toThrow(RangeError);
-    expect(() => createDocument(MAX_SIZE + 1, 10, [theme])).toThrow(RangeError);
-  });
-
-  it("rejects an empty theme list", () => {
-    expect(() => createDocument(4, 4, [])).toThrow();
+    expect(() => createDocument(0, 10, theme)).toThrow(RangeError);
+    expect(() => createDocument(MAX_SIZE + 1, 10, theme)).toThrow(RangeError);
   });
 });
 
@@ -47,7 +43,7 @@ describe("Document", () => {
 
   it("returns a new getState() reference on every mutation, so useSyncExternalStore-style consumers can detect the change", () => {
     const doc = makeDoc();
-    doc.getState().themes.push(createTheme("alt", "Alt", ["#0000ff"]));
+    const altTheme = createTheme("alt", "Alt", ["#0000ff"]);
 
     const beforeEdit = doc.getState();
     doc.applyEdit([{ index: 0, prevValue: 0, newValue: 1 }]);
@@ -61,32 +57,32 @@ describe("Document", () => {
     doc.redo();
     expect(doc.getState()).not.toBe(beforeRedo);
 
-    const beforeTheme = doc.getState();
-    doc.setActiveTheme("alt");
-    expect(doc.getState()).not.toBe(beforeTheme);
+    const beforeApply = doc.getState();
+    doc.applyTheme(altTheme);
+    expect(doc.getState()).not.toBe(beforeApply);
 
     const beforeColor = doc.getState();
-    doc.setThemeColor("alt", 1, "#123456");
+    doc.setThemeColor(1, "#123456");
     expect(doc.getState()).not.toBe(beforeColor);
   });
 
   it("undoes and redoes a theme color change", () => {
     const doc = makeDoc();
 
-    doc.setThemeColor("default", 1, "#123456");
-    expect(doc.getState().themes[0].colors[1]).toBe("#123456");
+    doc.setThemeColor(1, "#123456");
+    expect(doc.getState().theme.colors[1]).toBe("#123456");
 
     doc.undo();
-    expect(doc.getState().themes[0].colors[1]).toBe("#ff0000");
+    expect(doc.getState().theme.colors[1]).toBe("#ff0000");
 
     doc.redo();
-    expect(doc.getState().themes[0].colors[1]).toBe("#123456");
+    expect(doc.getState().theme.colors[1]).toBe("#123456");
   });
 
   it("does not record a color set that doesn't actually change the color", () => {
     const doc = makeDoc();
 
-    doc.setThemeColor("default", 1, "#ff0000"); // already the current color
+    doc.setThemeColor(1, "#ff0000"); // already the current color
     expect(doc.history.canUndo).toBe(false);
   });
 
@@ -94,25 +90,51 @@ describe("Document", () => {
     const doc = makeDoc();
 
     doc.applyEdit([{ index: 0, prevValue: 0, newValue: 1 }]);
-    doc.setThemeColor("default", 1, "#123456");
+    doc.setThemeColor(1, "#123456");
 
     doc.undo(); // undoes the color change first
-    expect(doc.getState().themes[0].colors[1]).toBe("#ff0000");
+    expect(doc.getState().theme.colors[1]).toBe("#ff0000");
     expect(doc.getState().pixels[0]).toBe(1);
 
     doc.undo(); // then the pixel edit
     expect(doc.getState().pixels[0]).toBe(0);
   });
 
-  it("switching the active theme leaves pixel indices untouched", () => {
+  it("applies a whole theme, leaving pixel indices untouched, and can undo/redo it", () => {
     const doc = makeDoc();
-    const secondTheme = createTheme("alt", "Alt", ["#0000ff"]);
-    doc.getState().themes.push(secondTheme);
+    const altTheme = createTheme("alt", "Alt", ["#0000ff"]);
     doc.applyEdit([{ index: 0, prevValue: 0, newValue: 1 }]);
 
-    doc.setActiveTheme("alt");
-
-    expect(doc.getState().activeThemeId).toBe("alt");
+    doc.applyTheme(altTheme);
+    expect(doc.getState().theme.id).toBe("alt");
     expect(doc.getState().pixels[0]).toBe(1);
+
+    doc.undo();
+    expect(doc.getState().theme.id).toBe("default");
+
+    doc.redo();
+    expect(doc.getState().theme.id).toBe("alt");
+  });
+
+  it("does not record applying the theme that's already active", () => {
+    const doc = makeDoc();
+    const sameTheme = createTheme("default", "Default", ["#ff0000", "#00ff00"]);
+
+    doc.applyTheme(sameTheme);
+
+    expect(doc.history.canUndo).toBe(false);
+  });
+
+  it("never mutates the Theme objects it was constructed or applied with, so a shared preset (e.g. a built-in theme) can't be corrupted by editing one document's colors", () => {
+    const sourceTheme = createTheme("shared", "Shared", ["#ff0000"]);
+    const doc = new Document(createDocument(2, 2, sourceTheme));
+
+    doc.setThemeColor(1, "#123456");
+    expect(sourceTheme.colors[1]).toBe("#ff0000");
+
+    const libraryTheme = createTheme("library", "Library", ["#00ff00"]);
+    doc.applyTheme(libraryTheme);
+    doc.setThemeColor(1, "#654321");
+    expect(libraryTheme.colors[1]).toBe("#00ff00");
   });
 });

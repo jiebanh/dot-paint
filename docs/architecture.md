@@ -28,11 +28,11 @@ dot-paint/
 ## data model (`packages/core`)
 
 Pixels store a **palette index**, not a color. This is the key structural choice: it's what
-makes "edit a color -> matching dots repaint" and "switch theme -> all dots repaint" both
+makes "edit a color -> matching dots repaint" and "apply a theme -> all dots repaint" both
 fall out of the same mechanism (re-resolve index -> color) instead of needing two.
 
 ```ts
-type PixelIndex = number;        // 0 = transparent, always, across every theme
+type PixelIndex = number;        // 0 = transparent, always
 type ColorHex = string;          // "#rrggbb"
 
 const PALETTE_SIZE = 33;         // index 0 (transparent) + 32 user colors
@@ -49,27 +49,38 @@ interface Theme {
 interface DotDocument {
   width: number;                 // <= 512
   height: number;                // <= 512
-  pixels: Uint8Array;            // length = width * height, values index into the active theme
-  themes: Theme[];
-  activeThemeId: string;
+  pixels: Uint8Array;            // length = width * height, values index into theme.colors
+  theme: Theme;                  // a self-contained copy — see "themes vs. the theme library" below
 }
 ```
 
-- Index `0` is reserved and always renders as transparent, regardless of theme — it is not
-  stored per-theme, so it can't drift between themes. `colors[0]`'s content is irrelevant
-  (the renderer short-circuits on index 0 before ever reading it); it exists only so every
-  other lookup is a direct `colors[pixelIndex]` with no `-1` offset to get wrong.
+- Index `0` is reserved and always renders as transparent — it is not stored per-theme, so
+  it can't drift when the theme changes. `colors[0]`'s content is irrelevant (the renderer
+  short-circuits on index 0 before ever reading it); it exists only so every other lookup is
+  a direct `colors[pixelIndex]` with no `-1` offset to get wrong.
 - 32 is the palette size the UI is designed around (a 32-swatch grid, `colors[1..32]`, plus
   a fixed transparent swatch for index 0) — not a hard ceiling in the data model.
-- "The color palette" the user paints with **is** `themes[activeThemeId].colors`. Editing a
-  swatch mutates that theme's `colors` array in place; every pixel holding that index
-  re-resolves to the new color on next render. No separate palette-vs-theme sync needed.
-- Switching the active theme swaps `activeThemeId`; `pixels` is untouched. If the new theme
-  has fewer colors than the old one, indices beyond its range render as transparent (falls
-  back to index-0 behavior) rather than erroring.
+- "The color palette" the user paints with **is** `document.theme.colors`. Editing a swatch
+  mutates that array in place; every pixel holding that index re-resolves to the new color
+  on next render. No separate palette-vs-theme sync needed.
 - `Uint8Array` caps the palette at 256 colors (indices 0–255). 33 leaves ample headroom, so
   the pixel type doesn't need revisiting even if the swatch count grows later. Pixel buffer
   stays small at 512×512 (256 KB max) either way.
+
+### themes vs. the theme library
+
+A document holds exactly **one** `Theme`, embedded and self-contained — a `.dpaint` file
+renders correctly on its own, with nothing external to resolve. Reusable named presets
+("themes" in the everyday sense — "Night", "Pastel", ...) live in a separate **theme
+library**, outside any document (`packages/web/src/io/themeLibrary.ts`, `localStorage`-backed
+today). `Document.applyTheme(theme)` copies a library entry's colors into the document,
+replacing its current theme wholesale; `pixels` is untouched, so every dot re-resolves to
+the new theme's colors. Like a pixel edit or a palette color change, this goes through
+`history` and is undoable.
+
+This split (document owns one concrete theme; the library owns reusable presets) is what
+lets themes be shared *across* documents without documents needing to reference each other
+or a shared file.
 
 ### document mutation & undo
 
@@ -123,18 +134,19 @@ generic JSON files.
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "width": 32,
   "height": 32,
   "pixels": "<base64 of the Uint8Array>",
-  "themes": [{ "id": "default", "name": "Default", "colors": ["#000000", "#ffffff"] }],
-  "activeThemeId": "default"
+  "theme": { "id": "default", "name": "Default", "colors": ["#000000", "#ffffff"] }
 }
 ```
 
-`version` guards future migrations (e.g. once animation frames are added). `core` owns
-`serialize`/`deserialize`; both `web` and `vscode-extension` call into it rather than each
-implementing (de)serialization.
+`version` guards migrations: v1 files (multiple `themes` + `activeThemeId`, from before the
+theme library split) are migrated on read by taking the theme that was active and discarding
+the rest — `core`'s `deserialize` does this transparently, so `web` and `vscode-extension`
+never see the old shape. Both packages call into `core`'s `serialize`/`deserialize` rather
+than each implementing (de)serialization.
 
 ## packages/web
 
@@ -142,7 +154,7 @@ React SPA (Vite). Structure:
 
 ```
 src/
-  components/   Canvas, Toolbar, PaletteEditor, ThemeSwitcher, BrushSizeControl
+  components/   Canvas, Toolbar, PaletteEditor, ThemeLibraryPanel, BrushSizeControl
   hooks/        useDocument (useSyncExternalStore over core Document)
   io/           file open/save (File System Access API, with download-fallback for
                 browsers that lack it), PNG export

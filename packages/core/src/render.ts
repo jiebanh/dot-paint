@@ -1,4 +1,4 @@
-import { getActiveTheme, type DotDocument } from "./document";
+import type { DotDocument } from "./document";
 import { TRANSPARENT_INDEX } from "./theme";
 
 /**
@@ -7,7 +7,7 @@ import { TRANSPARENT_INDEX } from "./theme";
  * the seam a future WebAssembly implementation would replace.
  */
 export function render(doc: DotDocument): Uint8ClampedArray<ArrayBuffer> {
-  const theme = getActiveTheme(doc);
+  const theme = doc.theme;
   const out = new Uint8ClampedArray(doc.pixels.length * 4);
   for (let i = 0; i < doc.pixels.length; i++) {
     const paletteIndex = doc.pixels[i];

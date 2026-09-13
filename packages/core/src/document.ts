@@ -1,41 +1,33 @@
 import { HistoryManager } from "./history";
-import type { ColorHex, Theme } from "./theme";
+import { cloneTheme, type ColorHex, type Theme } from "./theme";
 
 export const MAX_SIZE = 512;
 
 export interface DotDocument {
   width: number;
   height: number;
-  /** length width * height; values index into the active theme's colors. */
+  /** length width * height; values index into theme.colors. */
   pixels: Uint8Array;
-  themes: Theme[];
-  activeThemeId: string;
+  /**
+   * A self-contained copy of the theme the document was created or last
+   * "applied" with. Themes as reusable named presets live outside the
+   * document (a theme library, e.g. packages/web/src/io/themeLibrary.ts);
+   * applying one to a document just copies its colors in here, so a
+   * .dpaint file stays renderable on its own without needing that library.
+   */
+  theme: Theme;
 }
 
-export function createDocument(width: number, height: number, themes: Theme[], activeThemeId?: string): DotDocument {
+export function createDocument(width: number, height: number, theme: Theme): DotDocument {
   if (width < 1 || width > MAX_SIZE || height < 1 || height > MAX_SIZE) {
     throw new RangeError(`document size must be between 1 and ${MAX_SIZE}, got ${width}x${height}`);
-  }
-  if (themes.length === 0) {
-    throw new Error("a document needs at least one theme");
-  }
-  const resolvedActiveThemeId = activeThemeId ?? themes[0].id;
-  if (!themes.some((theme) => theme.id === resolvedActiveThemeId)) {
-    throw new Error(`activeThemeId "${resolvedActiveThemeId}" is not among the provided themes`);
   }
   return {
     width,
     height,
     pixels: new Uint8Array(width * height),
-    themes,
-    activeThemeId: resolvedActiveThemeId,
+    theme: cloneTheme(theme),
   };
-}
-
-export function getActiveTheme(doc: DotDocument): Theme {
-  const theme = doc.themes.find((t) => t.id === doc.activeThemeId);
-  if (!theme) throw new Error(`active theme "${doc.activeThemeId}" not found`);
-  return theme;
 }
 
 export interface CellDiff {
@@ -51,13 +43,18 @@ interface PixelEdit {
 
 interface ThemeColorEdit {
   type: "themeColor";
-  themeId: string;
   paletteIndex: number;
   prevColor: ColorHex;
   newColor: ColorHex;
 }
 
-type HistoryEntry = PixelEdit | ThemeColorEdit;
+interface ThemeApplied {
+  type: "themeApplied";
+  prevTheme: Theme;
+  newTheme: Theme;
+}
+
+type HistoryEntry = PixelEdit | ThemeColorEdit | ThemeApplied;
 
 /**
  * Mutable wrapper around a DotDocument. Framework-agnostic: web binds to it via
@@ -126,29 +123,36 @@ export class Document {
       }
       return;
     }
-    const theme = this.state.themes.find((t) => t.id === entry.themeId);
-    if (!theme) return; // the theme no longer exists; nothing sane to restore
-    theme.colors[entry.paletteIndex] = direction === "undo" ? entry.prevColor : entry.newColor;
+    if (entry.type === "themeColor") {
+      this.state.theme.colors[entry.paletteIndex] = direction === "undo" ? entry.prevColor : entry.newColor;
+      return;
+    }
+    this.state.theme = direction === "undo" ? entry.prevTheme : entry.newTheme;
   }
 
-  setActiveTheme(themeId: string): void {
-    if (!this.state.themes.some((theme) => theme.id === themeId)) {
-      throw new Error(`unknown theme "${themeId}"`);
-    }
-    this.state.activeThemeId = themeId;
+  /** Copies a theme (e.g. from a theme library) into this document, replacing its current one. */
+  applyTheme(theme: Theme): void {
+    const prevTheme = this.state.theme;
+    if (prevTheme.id === theme.id && colorsEqual(prevTheme.colors, theme.colors)) return;
+    const newTheme = cloneTheme(theme);
+    this.state.theme = newTheme;
+    this.history.push({ type: "themeApplied", prevTheme, newTheme });
     this.commit();
   }
 
-  setThemeColor(themeId: string, paletteIndex: number, color: ColorHex): void {
-    const theme = this.state.themes.find((t) => t.id === themeId);
-    if (!theme) throw new Error(`unknown theme "${themeId}"`);
+  setThemeColor(paletteIndex: number, color: ColorHex): void {
+    const theme = this.state.theme;
     if (paletteIndex < 1 || paletteIndex >= theme.colors.length) {
       throw new RangeError(`paletteIndex ${paletteIndex} is out of range`);
     }
     const prevColor = theme.colors[paletteIndex];
     if (prevColor === color) return;
     theme.colors[paletteIndex] = color;
-    this.history.push({ type: "themeColor", themeId, paletteIndex, prevColor, newColor: color });
+    this.history.push({ type: "themeColor", paletteIndex, prevColor, newColor: color });
     this.commit();
   }
+}
+
+function colorsEqual(a: ColorHex[], b: ColorHex[]): boolean {
+  return a.length === b.length && a.every((color, i) => color === b[i]);
 }
