@@ -73,16 +73,6 @@ export function App() {
 
   return (
     <main style={{ fontFamily: "sans-serif", padding: 24 }}>
-      <ColorPickerPanel
-        paletteIndex={tool.paletteIndex}
-        color={state.theme.colors[tool.paletteIndex]}
-        disabled={tool.paletteIndex === TRANSPARENT_INDEX}
-        onPreview={(color) => setColorPreview({ paletteIndex: tool.paletteIndex, color })}
-        onCommit={(color) => {
-          doc.setThemeColor(tool.paletteIndex, color);
-          setColorPreview(null);
-        }}
-      />
       <h1>dot-paint</h1>
       <p>
         {state.width}×{state.height}, theme "{state.theme.name}"
@@ -98,6 +88,17 @@ export function App() {
         <Canvas document={doc} tool={tool} colorPreview={colorPreview} />
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <ColorPickerPanel
+            paletteIndex={tool.paletteIndex}
+            color={state.theme.colors[tool.paletteIndex]}
+            disabled={tool.paletteIndex === TRANSPARENT_INDEX}
+            onPreview={(color) => setColorPreview({ paletteIndex: tool.paletteIndex, color })}
+            onCommit={(color) => {
+              doc.setThemeColor(tool.paletteIndex, color);
+              setColorPreview(null);
+            }}
+          />
+
           <fieldset>
             <legend>brush</legend>
             {(["square", "circle"] as BrushShape[]).map((shape) => (

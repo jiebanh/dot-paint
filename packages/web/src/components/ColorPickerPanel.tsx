@@ -68,24 +68,21 @@ function isValidHex(value: string): boolean {
 }
 
 const PANEL_STYLE: React.CSSProperties = {
-  position: "fixed",
-  top: 16,
-  right: 16,
   width: 220,
   padding: 12,
   background: "#fff",
   color: "#111",
   border: "1px solid #999",
   borderRadius: 6,
-  boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
+  boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
   display: "flex",
   flexDirection: "column",
   gap: 10,
-  zIndex: 1000,
 };
 
 /**
- * Always docked at the top right, always editing whatever palette index is
+ * Docked inline above the brush controls (was fixed to the top right of the
+ * viewport; moved in-flow for now), always editing whatever palette index is
  * currently selected for painting - no separate open/close step, no Escape
  * handling (both were reported as unintuitive/annoying: issue #15 plus
  * follow-up feedback). A drag on the square/slider previews live and commits
