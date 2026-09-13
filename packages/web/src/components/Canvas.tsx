@@ -37,16 +37,15 @@ export function Canvas({ document: doc, tool, colorPreview = null, scale = 16 }:
     // A palette color being dragged live (not yet committed to the theme, so
     // rendering it here - without touching Document - keeps a drag from
     // producing anything undo-able until it's actually released.
-    let themes = state.themes;
-    if (colorPreview && colorPreview.themeId === state.activeThemeId) {
-      themes = state.themes.map((t) =>
-        t.id === colorPreview.themeId
-          ? { ...t, colors: t.colors.map((c, i) => (i === colorPreview.paletteIndex ? colorPreview.color : c)) }
-          : t,
-      );
+    let theme = state.theme;
+    if (colorPreview) {
+      theme = {
+        ...theme,
+        colors: theme.colors.map((c, i) => (i === colorPreview.paletteIndex ? colorPreview.color : c)),
+      };
     }
 
-    const rgba = render({ ...state, pixels, themes });
+    const rgba = render({ ...state, pixels, theme });
     ctx.putImageData(new ImageData(rgba, state.width, state.height), 0, 0);
   }, [state, previewDiffs, colorPreview]);
 

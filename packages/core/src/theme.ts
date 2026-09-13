@@ -17,6 +17,11 @@ export interface Theme {
   colors: ColorHex[];
 }
 
+export function generateThemeId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  return `theme-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 export function createTheme(id: string, name: string, userColors: ColorHex[] = []): Theme {
   if (userColors.length > PALETTE_SIZE - 1) {
     throw new RangeError(`a theme supports at most ${PALETTE_SIZE - 1} user colors, got ${userColors.length}`);

@@ -1,11 +1,11 @@
-import type { BrushShape, Theme } from "@dot-paint/core";
+import type { BrushShape } from "@dot-paint/core";
 import { createDocument, createTheme, deserialize, Document, serialize } from "@dot-paint/core";
 import { useEffect, useState } from "react";
 import { Canvas, type PaintTool } from "./components/Canvas";
 import { FileMenu } from "./components/FileMenu";
 import { NewDocumentDialog } from "./components/NewDocumentDialog";
 import { type ColorPreview, PaletteEditor } from "./components/PaletteEditor";
-import { ThemeSwitcher } from "./components/ThemeSwitcher";
+import { ThemeLibraryPanel } from "./components/ThemeLibraryPanel";
 import { UndoRedoControls } from "./components/UndoRedoControls";
 import { useDocument } from "./hooks/useDocument";
 import { isVsCodeWebview, onHostMessage, postToHost } from "./io/vscodeBridge";
@@ -32,23 +32,9 @@ const DEFAULT_COLORS = [
   "#e67e22",
 ];
 
-const NIGHT_COLORS = [
-  "#e8e8f0",
-  "#0d0d14",
-  "#8e2de2",
-  "#1b6ca8",
-  "#0f9b8e",
-  "#c9a227",
-  "#d63aa0",
-  "#a8471f",
-];
-
-function createDefaultThemes(): Theme[] {
-  return [createTheme("default", "Default", DEFAULT_COLORS), createTheme("night", "Night", NIGHT_COLORS)];
-}
-
 function createDefaultDocument(width = 16, height = 16): Document {
-  return new Document(createDocument(width, height, createDefaultThemes(), "default"));
+  const theme = createTheme("default", "Default", DEFAULT_COLORS);
+  return new Document(createDocument(width, height, theme));
 }
 
 export function App() {
@@ -57,8 +43,6 @@ export function App() {
   const state = useDocument(doc);
   const [tool, setTool] = useState<PaintTool>({ shape: "square", size: 1, paletteIndex: 1 });
   const [colorPreview, setColorPreview] = useState<ColorPreview | null>(null);
-
-  const activeTheme = state.themes.find((t) => t.id === state.activeThemeId)!;
 
   // In a VSCode webview, the extension host owns the file; it sends the real
   // content once this reports "ready" (a fresh blank canvas is just the
@@ -101,7 +85,7 @@ export function App() {
     <main style={{ fontFamily: "sans-serif", padding: 24 }}>
       <h1>dot-paint</h1>
       <p>
-        {state.width}×{state.height}, theme "{state.activeThemeId}"
+        {state.width}×{state.height}, theme "{state.theme.name}"
       </p>
       <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
         <NewDocumentDialog onCreate={handleCreate} />
@@ -144,7 +128,7 @@ export function App() {
             <legend>color</legend>
             <PaletteEditor
               document={doc}
-              theme={activeTheme}
+              theme={state.theme}
               selectedIndex={tool.paletteIndex}
               onSelect={(paletteIndex) => setTool((t) => ({ ...t, paletteIndex }))}
               onPreview={setColorPreview}
@@ -152,8 +136,8 @@ export function App() {
           </fieldset>
 
           <fieldset>
-            <legend>theme</legend>
-            <ThemeSwitcher document={doc} state={state} />
+            <legend>theme library</legend>
+            <ThemeLibraryPanel document={doc} currentTheme={state.theme} />
           </fieldset>
         </div>
       </div>

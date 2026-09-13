@@ -6,7 +6,6 @@ const SWATCH_SIZE = 28;
 const COLUMNS = 8;
 
 export interface ColorPreview {
-  themeId: string;
   paletteIndex: number;
   color: string;
 }
@@ -39,10 +38,10 @@ export function PaletteEditor({ document: doc, theme, selectedIndex, onSelect, o
       if (!el) return;
       el.oninput = () => {
         setLocalPreview({ paletteIndex, color: el.value });
-        onPreview({ themeId: theme.id, paletteIndex, color: el.value });
+        onPreview({ paletteIndex, color: el.value });
       };
       el.onchange = () => {
-        doc.setThemeColor(theme.id, paletteIndex, el.value);
+        doc.setThemeColor(paletteIndex, el.value);
         setLocalPreview(null);
         onPreview(null);
       };
