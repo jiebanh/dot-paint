@@ -9,8 +9,10 @@ import { NewDocumentDialog } from "./components/NewDocumentDialog";
 import { type ColorPreview, PaletteEditor } from "./components/PaletteEditor";
 import { ThemeLibraryPanel } from "./components/ThemeLibraryPanel";
 import { UndoRedoControls } from "./components/UndoRedoControls";
+import { ZoomControl } from "./components/ZoomControl";
 import { useDocument } from "./hooks/useDocument";
 import { isVsCodeWebview, onHostMessage, postToHost } from "./io/vscodeBridge";
+import { autoZoom } from "./zoom";
 
 const VSCODE_SYNC_DEBOUNCE_MS = 300;
 
@@ -33,6 +35,15 @@ export function App() {
   const state = useDocument(doc);
   const [tool, setTool] = useState<PaintTool>({ shape: "square", size: 1, paletteIndex: 1 });
   const [colorPreview, setColorPreview] = useState<ColorPreview | null>(null);
+  const [zoom, setZoom] = useState(() => autoZoom(16, 16));
+
+  // Re-fit the zoom whenever the document is replaced (new/open/vscode-init/
+  // autosave-restore) - not on every edit, since `doc` only changes identity
+  // when a different Document instance is swapped in via setDoc.
+  useEffect(() => {
+    const current = doc.getState();
+    setZoom(autoZoom(current.width, current.height));
+  }, [doc]);
 
   // In a VSCode webview, the extension host owns the file; it sends the real
   // content once this reports "ready" (a fresh blank canvas is just the
@@ -85,7 +96,10 @@ export function App() {
       {createError && <p style={{ color: "crimson" }}>{createError}</p>}
 
       <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
-        <Canvas document={doc} tool={tool} colorPreview={colorPreview} />
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <Canvas document={doc} tool={tool} colorPreview={colorPreview} scale={zoom} />
+          <ZoomControl zoom={zoom} onChange={setZoom} />
+        </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <ColorPickerPanel

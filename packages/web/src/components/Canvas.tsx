@@ -2,6 +2,7 @@ import type { BrushShape, CellDiff, Document } from "@dot-paint/core";
 import { render, Stroke } from "@dot-paint/core";
 import { type PointerEvent, useEffect, useRef, useState } from "react";
 import { useDocument } from "../hooks/useDocument";
+import { VIEWPORT_SIZE } from "../zoom";
 import type { ColorPreview } from "./PaletteEditor";
 
 export interface PaintTool {
@@ -86,22 +87,37 @@ export function Canvas({ document: doc, tool, colorPreview = null, scale = 16 }:
   }
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={state.width}
-      height={state.height}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={commitStroke}
-      onPointerCancel={commitStroke}
+    <div
       style={{
-        width: state.width * scale,
-        height: state.height * scale,
-        imageRendering: "pixelated",
+        width: VIEWPORT_SIZE,
+        height: VIEWPORT_SIZE,
+        overflow: "auto",
         border: "1px solid #ccc",
-        touchAction: "none",
-        cursor: "crosshair",
+        background: "#e5e5e5",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
       }}
-    />
+    >
+      <canvas
+        ref={canvasRef}
+        width={state.width}
+        height={state.height}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={commitStroke}
+        onPointerCancel={commitStroke}
+        style={{
+          width: state.width * scale,
+          height: state.height * scale,
+          imageRendering: "pixelated",
+          border: "1px solid #666",
+          boxShadow: "0 0 0 1px #fff",
+          flexShrink: 0,
+          touchAction: "none",
+          cursor: "crosshair",
+        }}
+      />
+    </div>
   );
 }
