@@ -5,9 +5,6 @@ import { useDocument } from "../hooks/useDocument";
 import { VIEWPORT_SIZE } from "../zoom";
 import type { ColorPreview } from "./PaletteEditor";
 
-/** Transparency-checker square size, in image pixels. Non-integer on purpose - see the comment at its use below. */
-const CHECKER_UNIT = 1.2;
-
 export type ToolKind = "brush" | "bucket";
 
 export interface PaintTool {
@@ -22,9 +19,24 @@ interface CanvasProps {
   tool: PaintTool;
   colorPreview?: ColorPreview | null;
   scale?: number;
+  /** Options menu settings (issue #38) - all optional so Canvas keeps working with sane defaults on its own. */
+  checkerColorA?: string;
+  checkerColorB?: string;
+  /** Transparency-checker square size, in image pixels. Non-integer by default - see the comment at its use below. */
+  checkerUnit?: number;
+  viewportBackground?: string;
 }
 
-export function Canvas({ document: doc, tool, colorPreview = null, scale = 16 }: CanvasProps) {
+export function Canvas({
+  document: doc,
+  tool,
+  colorPreview = null,
+  scale = 16,
+  checkerColorA = "#cccccc",
+  checkerColorB = "#ffffff",
+  checkerUnit = 0.5,
+  viewportBackground = "#e5e5e5",
+}: CanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const state = useDocument(doc);
   const strokeRef = useRef<Stroke | null>(null);
@@ -107,7 +119,7 @@ export function Canvas({ document: doc, tool, colorPreview = null, scale = 16 }:
         height: VIEWPORT_SIZE,
         overflow: "auto",
         border: "1px solid #ccc",
-        background: "#e5e5e5",
+        background: viewportBackground,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -139,7 +151,7 @@ export function Canvas({ document: doc, tool, colorPreview = null, scale = 16 }:
           // glance, whereas an off-grid size reads unambiguously as a UI
           // pattern. background-size below is one full 2x2 checker tile, so
           // each individual square ends up at half that.
-          background: `repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 0 / ${scale * CHECKER_UNIT * 2}px ${scale * CHECKER_UNIT * 2}px`,
+          background: `repeating-conic-gradient(${checkerColorA} 0% 25%, ${checkerColorB} 0% 50%) 0 0 / ${scale * checkerUnit * 2}px ${scale * checkerUnit * 2}px`,
         }}
       />
     </div>
