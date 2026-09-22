@@ -2,6 +2,7 @@ import type { BrushShape } from "@dot-paint/core";
 import { createDocument, deserialize, Document, serialize, TRANSPARENT_INDEX } from "@dot-paint/core";
 import { useEffect, useState } from "react";
 import { BUILT_IN_THEMES } from "./builtInThemes";
+import { BrushSizeControl } from "./components/BrushSizeControl";
 import { Canvas, type PaintTool } from "./components/Canvas";
 import { ColorPickerPanel } from "./components/ColorPickerPanel";
 import { FileMenu } from "./components/FileMenu";
@@ -126,17 +127,10 @@ export function App() {
                 {shape}
               </label>
             ))}
-            <label style={{ display: "block", marginTop: 8 }}>
-              size
-              <input
-                type="number"
-                min={1}
-                max={8}
-                value={tool.size}
-                onChange={(e) => setTool((t) => ({ ...t, size: Number(e.target.value) || 1 }))}
-                style={{ width: 48, marginLeft: 8 }}
-              />
-            </label>
+            <div style={{ marginTop: 8 }}>
+              <div style={{ marginBottom: 4 }}>size</div>
+              <BrushSizeControl size={tool.size} onChange={(size) => setTool((t) => ({ ...t, size }))} />
+            </div>
           </fieldset>
 
           <fieldset>
