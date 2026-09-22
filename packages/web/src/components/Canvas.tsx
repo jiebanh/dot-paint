@@ -5,6 +5,9 @@ import { useDocument } from "../hooks/useDocument";
 import { VIEWPORT_SIZE } from "../zoom";
 import type { ColorPreview } from "./PaletteEditor";
 
+/** Transparency-checker square size, in image pixels. Non-integer on purpose - see the comment at its use below. */
+const CHECKER_UNIT = 1.2;
+
 export interface PaintTool {
   shape: BrushShape;
   size: number;
@@ -116,6 +119,16 @@ export function Canvas({ document: doc, tool, colorPreview = null, scale = 16 }:
           flexShrink: 0,
           touchAction: "none",
           cursor: "crosshair",
+          // putImageData writes real alpha into the canvas bitmap, so a
+          // transparent cell shows whatever is behind the element - this CSS
+          // checkerboard (same colors as the transparent swatch in
+          // PaletteEditor). A non-integer multiple of the pixel grid
+          // (CHECKER_UNIT below) is deliberate: a checker aligned to a clean
+          // 1x/2x pixel multiple tends to blend into the art's own grid at a
+          // glance, whereas an off-grid size reads unambiguously as a UI
+          // pattern. background-size below is one full 2x2 checker tile, so
+          // each individual square ends up at half that.
+          background: `repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 0 / ${scale * CHECKER_UNIT * 2}px ${scale * CHECKER_UNIT * 2}px`,
         }}
       />
     </div>
