@@ -7,12 +7,14 @@ import { Canvas, type PaintTool, type ToolKind } from "./components/Canvas";
 import { ColorPickerPanel } from "./components/ColorPickerPanel";
 import { FileMenu } from "./components/FileMenu";
 import { NewDocumentDialog } from "./components/NewDocumentDialog";
+import { OptionsDialog } from "./components/OptionsDialog";
 import { type ColorPreview, PaletteEditor } from "./components/PaletteEditor";
 import { ThemeLibraryPanel } from "./components/ThemeLibraryPanel";
 import { UndoRedoControls } from "./components/UndoRedoControls";
 import { ZoomControl } from "./components/ZoomControl";
 import { useDocument } from "./hooks/useDocument";
 import { isVsCodeWebview, onHostMessage, postToHost } from "./io/vscodeBridge";
+import { loadSettings, saveSettings } from "./settings";
 import { autoZoom } from "./zoom";
 
 const VSCODE_SYNC_DEBOUNCE_MS = 300;
@@ -38,6 +40,11 @@ export function App() {
   const [tool, setTool] = useState<PaintTool>({ kind: "brush", shape: "square", size: 1, paletteIndex: 1 });
   const [colorPreview, setColorPreview] = useState<ColorPreview | null>(null);
   const [zoom, setZoom] = useState(() => autoZoom(16, 16));
+  const [settings, setSettings] = useState(() => loadSettings());
+
+  useEffect(() => {
+    saveSettings(settings);
+  }, [settings]);
 
   // Re-fit the zoom whenever the document is replaced (new/open/vscode-init/
   // autosave-restore) - not on every edit, since `doc` only changes identity
@@ -86,7 +93,7 @@ export function App() {
   }
 
   return (
-    <main style={{ fontFamily: "sans-serif", padding: 24 }}>
+    <main style={{ fontFamily: "sans-serif", padding: 24, minHeight: "100vh", background: settings.pageBackgroundColor }}>
       <h1>dot-paint</h1>
       <p>
         {fileName ?? "untitled.dpaint"} — {state.width}×{state.height}, theme "{state.theme.name}"
@@ -105,12 +112,22 @@ export function App() {
           />
         )}
         <UndoRedoControls document={doc} />
+        <OptionsDialog settings={settings} onChange={setSettings} />
       </div>
       {createError && <p style={{ color: "crimson" }}>{createError}</p>}
 
       <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <Canvas document={doc} tool={tool} colorPreview={colorPreview} scale={zoom} />
+          <Canvas
+            document={doc}
+            tool={tool}
+            colorPreview={colorPreview}
+            scale={zoom}
+            checkerColorA={settings.transparentCheckerColorA}
+            checkerColorB={settings.transparentCheckerColorB}
+            checkerUnit={settings.transparentCheckerUnit}
+            viewportBackground={settings.canvasBackgroundColor}
+          />
           <ZoomControl zoom={zoom} onChange={setZoom} />
         </div>
 
