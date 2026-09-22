@@ -25,6 +25,18 @@ interface CanvasProps {
   /** Transparency-checker square size, in image pixels. Non-integer by default - see the comment at its use below. */
   checkerUnit?: number;
   viewportBackground?: string;
+  /** Guide lines (issue #46) - a display-only overlay, never part of the document or its PNG export. */
+  showGuides?: boolean;
+  /** Equal parts per axis; must be a power of 2 (see settings.ts's GUIDE_DIVISION_OPTIONS). */
+  guideDivisions?: number;
+  guideColor?: string;
+}
+
+/** Fractional positions (0..1) of the dividing lines for splitting an axis into `divisions` equal parts. */
+function guideFractions(divisions: number): number[] {
+  const fractions: number[] = [];
+  for (let k = 1; k < divisions; k++) fractions.push(k / divisions);
+  return fractions;
 }
 
 export function Canvas({
@@ -36,6 +48,9 @@ export function Canvas({
   checkerColorB = "#ffffff",
   checkerUnit = 0.5,
   viewportBackground = "#e5e5e5",
+  showGuides = false,
+  guideDivisions = 2,
+  guideColor = "#ff0000",
 }: CanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const state = useDocument(doc);
@@ -125,35 +140,60 @@ export function Canvas({
         justifyContent: "center",
       }}
     >
-      <canvas
-        ref={canvasRef}
-        width={state.width}
-        height={state.height}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={commitStroke}
-        onPointerCancel={commitStroke}
+      <div
         style={{
+          position: "relative",
           width: state.width * scale,
           height: state.height * scale,
-          imageRendering: "pixelated",
           border: "1px solid #666",
           boxShadow: "0 0 0 1px #fff",
           flexShrink: 0,
-          touchAction: "none",
-          cursor: tool.kind === "bucket" ? "cell" : "crosshair",
-          // putImageData writes real alpha into the canvas bitmap, so a
-          // transparent cell shows whatever is behind the element - this CSS
-          // checkerboard (same colors as the transparent swatch in
-          // PaletteEditor). A non-integer multiple of the pixel grid
-          // (CHECKER_UNIT below) is deliberate: a checker aligned to a clean
-          // 1x/2x pixel multiple tends to blend into the art's own grid at a
-          // glance, whereas an off-grid size reads unambiguously as a UI
-          // pattern. background-size below is one full 2x2 checker tile, so
-          // each individual square ends up at half that.
-          background: `repeating-conic-gradient(${checkerColorA} 0% 25%, ${checkerColorB} 0% 50%) 0 0 / ${scale * checkerUnit * 2}px ${scale * checkerUnit * 2}px`,
         }}
-      />
+      >
+        <canvas
+          ref={canvasRef}
+          width={state.width}
+          height={state.height}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={commitStroke}
+          onPointerCancel={commitStroke}
+          style={{
+            display: "block",
+            width: "100%",
+            height: "100%",
+            imageRendering: "pixelated",
+            touchAction: "none",
+            cursor: tool.kind === "bucket" ? "cell" : "crosshair",
+            // putImageData writes real alpha into the canvas bitmap, so a
+            // transparent cell shows whatever is behind the element - this CSS
+            // checkerboard (same colors as the transparent swatch in
+            // PaletteEditor). A non-integer multiple of the pixel grid
+            // (checkerUnit) is deliberate: a checker aligned to a clean 1x/2x
+            // pixel multiple tends to blend into the art's own grid at a
+            // glance, whereas an off-grid size reads unambiguously as a UI
+            // pattern. background-size below is one full 2x2 checker tile, so
+            // each individual square ends up at half that.
+            background: `repeating-conic-gradient(${checkerColorA} 0% 25%, ${checkerColorB} 0% 50%) 0 0 / ${scale * checkerUnit * 2}px ${scale * checkerUnit * 2}px`,
+          }}
+        />
+        {showGuides && (
+          <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+            {guideFractions(guideDivisions).map((f) => (
+              <div
+                key={`v-${f}`}
+                style={{ position: "absolute", left: `${f * 100}%`, top: 0, bottom: 0, width: 1, background: guideColor }}
+              />
+            ))}
+            {guideFractions(guideDivisions).map((f) => (
+              <div
+                key={`h-${f}`}
+                style={{ position: "absolute", top: `${f * 100}%`, left: 0, right: 0, height: 1, background: guideColor }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

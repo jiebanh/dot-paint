@@ -127,6 +127,9 @@ export function App() {
             checkerColorB={settings.transparentCheckerColorB}
             checkerUnit={settings.transparentCheckerUnit}
             viewportBackground={settings.canvasBackgroundColor}
+            showGuides={settings.guidesEnabled}
+            guideDivisions={settings.guideDivisions}
+            guideColor={settings.guideColor}
           />
           <ZoomControl zoom={zoom} onChange={setZoom} />
         </div>

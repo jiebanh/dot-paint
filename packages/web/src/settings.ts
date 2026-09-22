@@ -7,7 +7,14 @@ export interface AppSettings {
   canvasBackgroundColor: string;
   /** Background of the page itself, outside the canvas viewport. */
   pageBackgroundColor: string;
+  guidesEnabled: boolean;
+  /** How many equal parts to divide the canvas into, per axis - must be a power of 2 (see GUIDE_DIVISION_OPTIONS). */
+  guideDivisions: number;
+  guideColor: string;
 }
+
+/** Only powers of 2 - each doubling adds one more line at the midpoint of every existing gap. */
+export const GUIDE_DIVISION_OPTIONS = [2, 4, 8, 16, 32] as const;
 
 export const DEFAULT_SETTINGS: AppSettings = {
   transparentCheckerColorA: "#cccccc",
@@ -15,6 +22,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   transparentCheckerUnit: 0.5,
   canvasBackgroundColor: "#e5e5e5",
   pageBackgroundColor: "#ffffff",
+  guidesEnabled: false,
+  guideDivisions: 2,
+  guideColor: "#ff0000",
 };
 
 const STORAGE_KEY = "dot-paint:settings";

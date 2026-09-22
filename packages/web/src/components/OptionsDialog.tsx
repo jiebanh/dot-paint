@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { type AppSettings, DEFAULT_SETTINGS } from "../settings";
+import { type AppSettings, DEFAULT_SETTINGS, GUIDE_DIVISION_OPTIONS } from "../settings";
 
 interface OptionsDialogProps {
   settings: AppSettings;
@@ -53,6 +53,49 @@ export function OptionsDialog({ settings, onChange }: OptionsDialogProps) {
             <span style={{ width: 32, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
               {settings.transparentCheckerUnit.toFixed(1)}
             </span>
+          </label>
+        </fieldset>
+
+        <fieldset style={{ marginBottom: 12 }}>
+          <legend>guides</legend>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <input
+              type="checkbox"
+              checked={settings.guidesEnabled}
+              onChange={(e) => update("guidesEnabled", e.target.checked)}
+            />
+            show guides
+          </label>
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              marginBottom: 8,
+              opacity: settings.guidesEnabled ? 1 : 0.5,
+            }}
+          >
+            divisions
+            <select
+              disabled={!settings.guidesEnabled}
+              value={settings.guideDivisions}
+              onChange={(e) => update("guideDivisions", Number(e.target.value))}
+            >
+              {GUIDE_DIVISION_OPTIONS.map((divisions) => (
+                <option key={divisions} value={divisions}>
+                  1/{divisions}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, opacity: settings.guidesEnabled ? 1 : 0.5 }}>
+            color
+            <input
+              type="color"
+              disabled={!settings.guidesEnabled}
+              value={settings.guideColor}
+              onChange={(e) => update("guideColor", e.target.value)}
+            />
           </label>
         </fieldset>
 
