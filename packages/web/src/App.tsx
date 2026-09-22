@@ -32,6 +32,7 @@ function createDefaultDocument(width = 16, height = 16): Document {
 
 export function App() {
   const [doc, setDoc] = useState<Document>(() => createDefaultDocument());
+  const [fileName, setFileName] = useState<string | undefined>(undefined);
   const [createError, setCreateError] = useState<string | null>(null);
   const state = useDocument(doc);
   const [tool, setTool] = useState<PaintTool>({ kind: "brush", shape: "square", size: 1, paletteIndex: 1 });
@@ -74,9 +75,10 @@ export function App() {
     };
   }, [doc]);
 
-  function handleCreate(width: number, height: number) {
+  function handleCreate(width: number, height: number, name: string | undefined) {
     try {
       setDoc(createDefaultDocument(width, height));
+      setFileName(name && (name.endsWith(".dpaint") ? name : `${name}.dpaint`));
       setCreateError(null);
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : String(err));
@@ -87,11 +89,21 @@ export function App() {
     <main style={{ fontFamily: "sans-serif", padding: 24 }}>
       <h1>dot-paint</h1>
       <p>
-        {state.width}×{state.height}, theme "{state.theme.name}"
+        {fileName ?? "untitled.dpaint"} — {state.width}×{state.height}, theme "{state.theme.name}"
       </p>
       <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
         <NewDocumentDialog onCreate={handleCreate} />
-        {!isVsCodeWebview() && <FileMenu document={doc} onOpen={setDoc} />}
+        {!isVsCodeWebview() && (
+          <FileMenu
+            document={doc}
+            fileName={fileName}
+            onOpen={(newDoc, name) => {
+              setDoc(newDoc);
+              setFileName(name);
+            }}
+            onFileNameChange={setFileName}
+          />
+        )}
         <UndoRedoControls document={doc} />
       </div>
       {createError && <p style={{ color: "crimson" }}>{createError}</p>}

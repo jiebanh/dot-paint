@@ -61,25 +61,28 @@ version bump just drops and recreates the object store:
 
 ## lifecycle: which record a save goes to
 
-`FileMenu` (`packages/web/src/components/FileMenu.tsx`) holds `filenameRef: string |
-undefined` — the filename the current document is known by, used directly as the auto-save
-key (falling back to `"untitled.dpaint"`). There's no separate session id: saving under the
-same name always overwrites that name's record, so re-opening (or re-creating) a document
-with a name you've auto-saved before naturally lands back on that same slot - "tracing back
-through the filename" is just what upserting by name does.
+The filename is `App`-level state (`fileName: string | undefined`, in
+`packages/web/src/App.tsx`), not owned by `FileMenu` — every action that can change it goes
+through `App`, so there's exactly one source of truth for "what is this document currently
+called":
 
-`namedForDocRef` (a second ref, holding the `Document` instance `filenameRef` currently
-describes) exists to catch the one case that isn't a `FileMenu`-initiated rename: a brand
-new blank document from `NewDocumentDialog` changes `doc`'s identity without `FileMenu`
-being told a new name. A `useEffect` keyed on `doc` compares it against `namedForDocRef`;
-on a mismatch (this doc change wasn't accompanied by `FileMenu` setting a name itself), it
-resets `filenameRef.current = undefined` — collapsing a fresh "New" document onto the shared
-`"untitled.dpaint"` slot rather than continuing to write under whatever file was open
-before. `handleOpen` and `handleRestore` set both refs together, so they don't trigger that
-reset.
+- `NewDocumentDialog` has an optional name field; `App.handleCreate` sets `fileName` to
+  whatever was typed (normalized to end in `.dpaint`), or `undefined` if left blank.
+- `FileMenu.handleOpen` / `handleRestore` call `onOpen(newDoc, name)`, which `App` uses to
+  set `doc` and `fileName` together.
+- `FileMenu.handleSaveAs` calls `onFileNameChange(name)` after a successful `.dpaint` save.
+
+`FileMenu` itself is a controlled component for this: it receives `fileName` as a prop and
+uses `fileName ?? "untitled.dpaint"` directly as the auto-save key and the `SaveAsDialog`
+suggested name - no local tracking, no need to guess whether a given `doc` change came with
+an explicit rename. Saving under a name that already has a record always overwrites that
+record, so re-opening (or re-creating with the same name) a document you've auto-saved
+before naturally lands back on that same slot - "tracing back through the filename" is just
+what upserting by name does. A brand new, unnamed document collapses onto the shared
+`"untitled.dpaint"` slot the same way.
 
 While the "Auto-save" checkbox is on, every `Document` change is debounced (500 ms) and
-written to `filenameRef.current ?? "untitled.dpaint"`.
+written to `fileName ?? "untitled.dpaint"`.
 
 There is no "auto-restore on startup" — restoring is always an explicit user action (see
 below), the same as it was under the old multi-session (v2) model.
