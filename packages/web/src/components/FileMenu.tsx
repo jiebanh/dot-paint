@@ -1,8 +1,10 @@
 import { deserialize, Document, serialize } from "@dot-paint/core";
 import { useEffect, useRef, useState } from "react";
-import { loadAutosave, saveAutosave } from "../io/autosave";
+import type { AutosaveRecord } from "../io/autosave";
+import { generateAutosaveId, saveAutosave } from "../io/autosave";
 import { DPAINT_PICKER_TYPES, downloadDpaintFile, openDpaintFile, pickSaveHandle, supportsFileSystemAccess, writeToHandle } from "../io/fileIO";
 import { exportPng } from "../io/pngExport";
+import { AutosaveBrowserDialog } from "./AutosaveBrowserDialog";
 import { type SaveFormat, SaveAsDialog } from "./SaveAsDialog";
 
 interface FileMenuProps {
@@ -16,25 +18,18 @@ const AUTOSAVE_DEBOUNCE_MS = 500;
 export function FileMenu({ document: doc, onOpen }: FileMenuProps) {
   // Last confirmed filename, used as the auto-save name and the "Save As" default.
   const filenameRef = useRef<string | undefined>(undefined);
+  // Which auto-save record this document is currently writing to, if any.
+  const autosaveIdRef = useRef<string | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [autoSave, setAutoSave] = useState(false);
-  const restoredRef = useRef(false);
 
-  // Restore a prior auto-save once, on mount.
+  // A new document identity (new/open/restore) always starts a fresh
+  // auto-save entry rather than overwriting whatever was there before -
+  // restoring an older snapshot and continuing to edit is then its own
+  // entry, not a silent overwrite of the one you restored from.
   useEffect(() => {
-    if (restoredRef.current) return;
-    restoredRef.current = true;
-    loadAutosave()
-      .then((record) => {
-        if (!record) return;
-        const state = deserialize(record.json);
-        filenameRef.current = record.name;
-        onOpen(new Document(state));
-      })
-      .catch(() => {
-        // best-effort restore; leave the default document in place
-      });
-  }, [onOpen]);
+    autosaveIdRef.current = undefined;
+  }, [doc]);
 
   // While auto-save is on, persist the document (debounced) whenever it changes.
   useEffect(() => {
@@ -42,7 +37,14 @@ export function FileMenu({ document: doc, onOpen }: FileMenuProps) {
 
     let timer: ReturnType<typeof setTimeout> | undefined;
     const persist = () => {
-      saveAutosave({ name: filenameRef.current ?? DEFAULT_NAME, json: serialize(doc.getState()) }).catch((err) => {
+      autosaveIdRef.current ??= generateAutosaveId();
+      const record: AutosaveRecord = {
+        id: autosaveIdRef.current,
+        name: filenameRef.current ?? DEFAULT_NAME,
+        json: serialize(doc.getState()),
+        updatedAt: Date.now(),
+      };
+      saveAutosave(record).catch((err) => {
         setError(err instanceof Error ? err.message : String(err));
       });
     };
@@ -65,6 +67,17 @@ export function FileMenu({ document: doc, onOpen }: FileMenuProps) {
       if (!result) return;
       const state = deserialize(result.json);
       filenameRef.current = result.name;
+      onOpen(new Document(state));
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  function handleRestore(record: AutosaveRecord) {
+    try {
+      const state = deserialize(record.json);
+      filenameRef.current = record.name;
       onOpen(new Document(state));
       setError(null);
     } catch (err) {
@@ -112,6 +125,7 @@ export function FileMenu({ document: doc, onOpen }: FileMenuProps) {
         documentHeight={doc.getState().height}
         onSave={handleSaveAs}
       />
+      <AutosaveBrowserDialog onRestore={handleRestore} />
       <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
         <input type="checkbox" checked={autoSave} onChange={(e) => setAutoSave(e.target.checked)} />
         Auto-save

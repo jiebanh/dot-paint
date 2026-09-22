@@ -164,6 +164,9 @@ src/
 Runs standalone (open a `.dpaint` file via the File System Access API / drag-and-drop) and
 is also the bundle embedded in the VSCode webview — see below.
 
+Auto-save (the local IndexedDB safety net and its restore UI, web-only) is documented
+separately in [autosave.md](./autosave.md).
+
 ## packages/vscode-extension
 
 Implements `vscode.CustomEditorProvider<DotPaintDocument>` as a **custom binary editor** for
