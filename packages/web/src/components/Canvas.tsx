@@ -1,5 +1,5 @@
 import type { BrushShape, CellDiff, Document } from "@dot-paint/core";
-import { render, Stroke } from "@dot-paint/core";
+import { floodFill, render, Stroke } from "@dot-paint/core";
 import { type PointerEvent, useEffect, useRef, useState } from "react";
 import { useDocument } from "../hooks/useDocument";
 import { VIEWPORT_SIZE } from "../zoom";
@@ -8,7 +8,10 @@ import type { ColorPreview } from "./PaletteEditor";
 /** Transparency-checker square size, in image pixels. Non-integer on purpose - see the comment at its use below. */
 const CHECKER_UNIT = 1.2;
 
+export type ToolKind = "brush" | "bucket";
+
 export interface PaintTool {
+  kind: ToolKind;
   shape: BrushShape;
   size: number;
   paletteIndex: number;
@@ -64,9 +67,17 @@ export function Canvas({ document: doc, tool, colorPreview = null, scale = 16 }:
   }
 
   function handlePointerDown(e: PointerEvent<HTMLCanvasElement>) {
+    const { x, y } = cellFromPointer(e);
+
+    if (tool.kind === "bucket") {
+      // Click to confirm, not drag: one fill is one undo step, no stroke to track.
+      const diffs = floodFill(state.pixels, state.width, state.height, x, y, tool.paletteIndex);
+      if (diffs.length > 0) doc.applyEdit(diffs);
+      return;
+    }
+
     e.currentTarget.setPointerCapture(e.pointerId);
     const stroke = new Stroke(state.pixels, state.width, state.height, tool.shape, tool.size, tool.paletteIndex);
-    const { x, y } = cellFromPointer(e);
     stroke.addPoint(x, y);
     strokeRef.current = stroke;
     setPreviewDiffs(stroke.finish());
@@ -118,7 +129,7 @@ export function Canvas({ document: doc, tool, colorPreview = null, scale = 16 }:
           boxShadow: "0 0 0 1px #fff",
           flexShrink: 0,
           touchAction: "none",
-          cursor: "crosshair",
+          cursor: tool.kind === "bucket" ? "cell" : "crosshair",
           // putImageData writes real alpha into the canvas bitmap, so a
           // transparent cell shows whatever is behind the element - this CSS
           // checkerboard (same colors as the transparent swatch in

@@ -3,7 +3,7 @@ import { createDocument, deserialize, Document, serialize, TRANSPARENT_INDEX } f
 import { useEffect, useState } from "react";
 import { BUILT_IN_THEMES } from "./builtInThemes";
 import { BrushSizeControl } from "./components/BrushSizeControl";
-import { Canvas, type PaintTool } from "./components/Canvas";
+import { Canvas, type PaintTool, type ToolKind } from "./components/Canvas";
 import { ColorPickerPanel } from "./components/ColorPickerPanel";
 import { FileMenu } from "./components/FileMenu";
 import { NewDocumentDialog } from "./components/NewDocumentDialog";
@@ -34,7 +34,7 @@ export function App() {
   const [doc, setDoc] = useState<Document>(() => createDefaultDocument());
   const [createError, setCreateError] = useState<string | null>(null);
   const state = useDocument(doc);
-  const [tool, setTool] = useState<PaintTool>({ shape: "square", size: 1, paletteIndex: 1 });
+  const [tool, setTool] = useState<PaintTool>({ kind: "brush", shape: "square", size: 1, paletteIndex: 1 });
   const [colorPreview, setColorPreview] = useState<ColorPreview | null>(null);
   const [zoom, setZoom] = useState(() => autoZoom(16, 16));
 
@@ -115,21 +115,40 @@ export function App() {
           />
 
           <fieldset>
-            <legend>brush</legend>
-            {(["square", "circle"] as BrushShape[]).map((shape) => (
-              <label key={shape} style={{ display: "block" }}>
+            <legend>tool</legend>
+            {(["brush", "bucket"] as ToolKind[]).map((kind) => (
+              <label key={kind} style={{ display: "block" }}>
                 <input
                   type="radio"
-                  name="shape"
-                  checked={tool.shape === shape}
-                  onChange={() => setTool((t) => ({ ...t, shape }))}
+                  name="tool-kind"
+                  checked={tool.kind === kind}
+                  onChange={() => setTool((t) => ({ ...t, kind }))}
                 />
-                {shape}
+                {kind}
               </label>
             ))}
+
+            <div style={{ display: "flex", gap: 8, marginTop: 8, opacity: tool.kind === "brush" ? 1 : 0.5 }}>
+              {(["square", "circle"] as BrushShape[]).map((shape) => (
+                <label key={shape} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <input
+                    type="radio"
+                    name="shape"
+                    disabled={tool.kind !== "brush"}
+                    checked={tool.shape === shape}
+                    onChange={() => setTool((t) => ({ ...t, shape }))}
+                  />
+                  {shape}
+                </label>
+              ))}
+            </div>
             <div style={{ marginTop: 8 }}>
               <div style={{ marginBottom: 4 }}>size</div>
-              <BrushSizeControl size={tool.size} onChange={(size) => setTool((t) => ({ ...t, size }))} />
+              <BrushSizeControl
+                size={tool.size}
+                onChange={(size) => setTool((t) => ({ ...t, size }))}
+                disabled={tool.kind !== "brush"}
+              />
             </div>
           </fieldset>
 
