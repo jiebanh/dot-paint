@@ -128,27 +128,28 @@ export function App() {
               </label>
             ))}
 
-            {tool.kind === "brush" && (
-              <>
-                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                  {(["square", "circle"] as BrushShape[]).map((shape) => (
-                    <label key={shape} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                      <input
-                        type="radio"
-                        name="shape"
-                        checked={tool.shape === shape}
-                        onChange={() => setTool((t) => ({ ...t, shape }))}
-                      />
-                      {shape}
-                    </label>
-                  ))}
-                </div>
-                <div style={{ marginTop: 8 }}>
-                  <div style={{ marginBottom: 4 }}>size</div>
-                  <BrushSizeControl size={tool.size} onChange={(size) => setTool((t) => ({ ...t, size }))} />
-                </div>
-              </>
-            )}
+            <div style={{ display: "flex", gap: 8, marginTop: 8, opacity: tool.kind === "brush" ? 1 : 0.5 }}>
+              {(["square", "circle"] as BrushShape[]).map((shape) => (
+                <label key={shape} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <input
+                    type="radio"
+                    name="shape"
+                    disabled={tool.kind !== "brush"}
+                    checked={tool.shape === shape}
+                    onChange={() => setTool((t) => ({ ...t, shape }))}
+                  />
+                  {shape}
+                </label>
+              ))}
+            </div>
+            <div style={{ marginTop: 8 }}>
+              <div style={{ marginBottom: 4 }}>size</div>
+              <BrushSizeControl
+                size={tool.size}
+                onChange={(size) => setTool((t) => ({ ...t, size }))}
+                disabled={tool.kind !== "brush"}
+              />
+            </div>
           </fieldset>
 
           <fieldset>

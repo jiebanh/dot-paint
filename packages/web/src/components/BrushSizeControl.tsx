@@ -9,16 +9,18 @@ function clamp(value: number): number {
 interface BrushSizeControlProps {
   size: number;
   onChange: (size: number) => void;
+  disabled?: boolean;
 }
 
-export function BrushSizeControl({ size, onChange }: BrushSizeControlProps) {
+export function BrushSizeControl({ size, onChange, disabled = false }: BrushSizeControlProps) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 4, opacity: disabled ? 0.5 : 1 }}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
         {PRESET_SIZES.map((preset) => (
           <button
             key={preset}
             type="button"
+            disabled={disabled}
             onClick={() => onChange(preset)}
             style={{ fontWeight: preset === size ? "bold" : "normal" }}
           >
@@ -32,6 +34,7 @@ export function BrushSizeControl({ size, onChange }: BrushSizeControlProps) {
           min={1}
           max={MAX_SIZE}
           value={size}
+          disabled={disabled}
           onChange={(e) => onChange(clamp(Number(e.target.value)))}
           style={{ flex: 1 }}
         />
@@ -40,6 +43,7 @@ export function BrushSizeControl({ size, onChange }: BrushSizeControlProps) {
           min={1}
           max={MAX_SIZE}
           value={size}
+          disabled={disabled}
           onChange={(e) => onChange(clamp(Number(e.target.value)))}
           style={{ width: 48 }}
         />
