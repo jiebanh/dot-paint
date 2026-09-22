@@ -72,11 +72,11 @@ export function FileMenu({ document: doc, onOpen }: FileMenuProps) {
     }
   }
 
-  /** Always resolves a new destination, in the name/format the user chose in the dialog. */
-  async function handleSaveAs(name: string, format: SaveFormat) {
+  /** Always resolves a new destination, in the name/format/scale the user chose in the dialog. */
+  async function handleSaveAs(name: string, format: SaveFormat, pngScale: number) {
     try {
       if (format === "png") {
-        await exportPng(doc.getState(), name);
+        await exportPng(doc.getState(), name, pngScale);
         setError(null);
         return;
       }
@@ -106,7 +106,12 @@ export function FileMenu({ document: doc, onOpen }: FileMenuProps) {
       <button type="button" onClick={handleOpen}>
         Open…
       </button>
-      <SaveAsDialog suggestedName={suggestedName} onSave={handleSaveAs} />
+      <SaveAsDialog
+        suggestedName={suggestedName}
+        documentWidth={doc.getState().width}
+        documentHeight={doc.getState().height}
+        onSave={handleSaveAs}
+      />
       <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
         <input type="checkbox" checked={autoSave} onChange={(e) => setAutoSave(e.target.checked)} />
         Auto-save
