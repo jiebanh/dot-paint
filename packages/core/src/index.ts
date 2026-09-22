@@ -5,3 +5,4 @@ export * from "./brush";
 export * from "./fill";
 export * from "./render";
 export * from "./serialize";
+export * from "./upscale";

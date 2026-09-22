@@ -72,11 +72,11 @@ export function FileMenu({ document: doc, onOpen }: FileMenuProps) {
     }
   }
 
-  /** Always resolves a new destination, in the name/format the user chose in the dialog. */
-  async function handleSaveAs(name: string, format: SaveFormat) {
+  /** Always resolves a new destination, in the name/format/scale the user chose in the dialog. */
+  async function handleSaveAs(name: string, format: SaveFormat, pngScale: number) {
     try {
       if (format === "png") {
-        await exportPng(doc.getState(), name);
+        await exportPng(doc.getState(), name, pngScale);
         setError(null);
         return;
       }
