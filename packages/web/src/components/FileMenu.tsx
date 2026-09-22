@@ -106,7 +106,12 @@ export function FileMenu({ document: doc, onOpen }: FileMenuProps) {
       <button type="button" onClick={handleOpen}>
         Open…
       </button>
-      <SaveAsDialog suggestedName={suggestedName} onSave={handleSaveAs} />
+      <SaveAsDialog
+        suggestedName={suggestedName}
+        documentWidth={doc.getState().width}
+        documentHeight={doc.getState().height}
+        onSave={handleSaveAs}
+      />
       <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
         <input type="checkbox" checked={autoSave} onChange={(e) => setAutoSave(e.target.checked)} />
         Auto-save
