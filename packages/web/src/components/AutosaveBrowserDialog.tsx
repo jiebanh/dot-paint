@@ -32,10 +32,10 @@ export function AutosaveBrowserDialog({ onRestore }: AutosaveBrowserDialogProps)
     dialogRef.current?.close();
   }
 
-  async function handleDelete(id: string) {
+  async function handleDelete(name: string) {
     try {
-      await deleteAutosave(id);
-      setRecords((prev) => prev.filter((r) => r.id !== id));
+      await deleteAutosave(name);
+      setRecords((prev) => prev.filter((r) => r.name !== name));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -54,7 +54,7 @@ export function AutosaveBrowserDialog({ onRestore }: AutosaveBrowserDialogProps)
         ) : (
           <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 4 }}>
             {records.map((record) => (
-              <li key={record.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <li key={record.name} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <button
                   type="button"
                   onClick={() => handleLoad(record)}
@@ -63,7 +63,7 @@ export function AutosaveBrowserDialog({ onRestore }: AutosaveBrowserDialogProps)
                   <span>{record.name}</span>
                   <span style={{ fontSize: 12, opacity: 0.7 }}>{new Date(record.updatedAt).toLocaleString()}</span>
                 </button>
-                <button type="button" onClick={() => handleDelete(record.id)} aria-label={`delete ${record.name}`}>
+                <button type="button" onClick={() => handleDelete(record.name)} aria-label={`delete ${record.name}`}>
                   ×
                 </button>
               </li>

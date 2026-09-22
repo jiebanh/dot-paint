@@ -1,7 +1,7 @@
 import { deserialize, Document, serialize } from "@dot-paint/core";
 import { useEffect, useRef, useState } from "react";
 import type { AutosaveRecord } from "../io/autosave";
-import { generateAutosaveId, saveAutosave } from "../io/autosave";
+import { saveAutosave } from "../io/autosave";
 import { DPAINT_PICKER_TYPES, downloadDpaintFile, openDpaintFile, pickSaveHandle, supportsFileSystemAccess, writeToHandle } from "../io/fileIO";
 import { exportPng } from "../io/pngExport";
 import { AutosaveBrowserDialog } from "./AutosaveBrowserDialog";
@@ -16,30 +16,33 @@ const DEFAULT_NAME = "untitled.dpaint";
 const AUTOSAVE_DEBOUNCE_MS = 500;
 
 export function FileMenu({ document: doc, onOpen }: FileMenuProps) {
-  // Last confirmed filename, used as the auto-save name and the "Save As" default.
+  // Last confirmed filename, used as the auto-save key and the "Save As" default.
   const filenameRef = useRef<string | undefined>(undefined);
-  // Which auto-save record this document is currently writing to, if any.
-  const autosaveIdRef = useRef<string | undefined>(undefined);
+  // Which Document instance filenameRef currently belongs to - lets the effect
+  // below tell "doc changed because this component just named it" (Open,
+  // restore) apart from "doc changed for some other reason" (a brand new
+  // document from NewDocumentDialog), which should fall back to the shared
+  // "untitled" name rather than keep the previous file's name.
+  const namedForDocRef = useRef<Document | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [autoSave, setAutoSave] = useState(false);
 
-  // A new document identity (new/open/restore) always starts a fresh
-  // auto-save entry rather than overwriting whatever was there before -
-  // restoring an older snapshot and continuing to edit is then its own
-  // entry, not a silent overwrite of the one you restored from.
   useEffect(() => {
-    autosaveIdRef.current = undefined;
+    if (namedForDocRef.current !== doc) {
+      filenameRef.current = undefined;
+      namedForDocRef.current = doc;
+    }
   }, [doc]);
 
-  // While auto-save is on, persist the document (debounced) whenever it changes.
+  // While auto-save is on, persist the document (debounced) whenever it
+  // changes. One record per filename (autosave.ts upserts by name) - all
+  // untitled documents share the same "untitled.dpaint" slot by design.
   useEffect(() => {
     if (!autoSave) return;
 
     let timer: ReturnType<typeof setTimeout> | undefined;
     const persist = () => {
-      autosaveIdRef.current ??= generateAutosaveId();
       const record: AutosaveRecord = {
-        id: autosaveIdRef.current,
         name: filenameRef.current ?? DEFAULT_NAME,
         json: serialize(doc.getState()),
         updatedAt: Date.now(),
@@ -66,8 +69,10 @@ export function FileMenu({ document: doc, onOpen }: FileMenuProps) {
       const result = await openDpaintFile();
       if (!result) return;
       const state = deserialize(result.json);
+      const newDoc = new Document(state);
       filenameRef.current = result.name;
-      onOpen(new Document(state));
+      namedForDocRef.current = newDoc;
+      onOpen(newDoc);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -77,8 +82,10 @@ export function FileMenu({ document: doc, onOpen }: FileMenuProps) {
   function handleRestore(record: AutosaveRecord) {
     try {
       const state = deserialize(record.json);
+      const newDoc = new Document(state);
       filenameRef.current = record.name;
-      onOpen(new Document(state));
+      namedForDocRef.current = newDoc;
+      onOpen(newDoc);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
