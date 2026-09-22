@@ -1,48 +1,40 @@
 import { deserialize, Document, serialize } from "@dot-paint/core";
-import { useEffect, useRef, useState } from "react";
-import { loadAutosave, saveAutosave } from "../io/autosave";
+import { useEffect, useState } from "react";
+import type { AutosaveRecord } from "../io/autosave";
+import { saveAutosave } from "../io/autosave";
 import { DPAINT_PICKER_TYPES, downloadDpaintFile, openDpaintFile, pickSaveHandle, supportsFileSystemAccess, writeToHandle } from "../io/fileIO";
 import { exportPng } from "../io/pngExport";
+import { AutosaveBrowserDialog } from "./AutosaveBrowserDialog";
 import { type SaveFormat, SaveAsDialog } from "./SaveAsDialog";
 
 interface FileMenuProps {
   document: Document;
-  onOpen: (doc: Document) => void;
+  fileName: string | undefined;
+  onOpen: (doc: Document, name: string | undefined) => void;
+  onFileNameChange: (name: string | undefined) => void;
 }
 
 const DEFAULT_NAME = "untitled.dpaint";
 const AUTOSAVE_DEBOUNCE_MS = 500;
 
-export function FileMenu({ document: doc, onOpen }: FileMenuProps) {
-  // Last confirmed filename, used as the auto-save name and the "Save As" default.
-  const filenameRef = useRef<string | undefined>(undefined);
+export function FileMenu({ document: doc, fileName, onOpen, onFileNameChange }: FileMenuProps) {
   const [error, setError] = useState<string | null>(null);
   const [autoSave, setAutoSave] = useState(false);
-  const restoredRef = useRef(false);
 
-  // Restore a prior auto-save once, on mount.
-  useEffect(() => {
-    if (restoredRef.current) return;
-    restoredRef.current = true;
-    loadAutosave()
-      .then((record) => {
-        if (!record) return;
-        const state = deserialize(record.json);
-        filenameRef.current = record.name;
-        onOpen(new Document(state));
-      })
-      .catch(() => {
-        // best-effort restore; leave the default document in place
-      });
-  }, [onOpen]);
-
-  // While auto-save is on, persist the document (debounced) whenever it changes.
+  // While auto-save is on, persist the document (debounced) whenever it
+  // changes. One record per filename (autosave.ts upserts by name) - all
+  // untitled documents share the same "untitled.dpaint" slot by design.
   useEffect(() => {
     if (!autoSave) return;
 
     let timer: ReturnType<typeof setTimeout> | undefined;
     const persist = () => {
-      saveAutosave({ name: filenameRef.current ?? DEFAULT_NAME, json: serialize(doc.getState()) }).catch((err) => {
+      const record: AutosaveRecord = {
+        name: fileName ?? DEFAULT_NAME,
+        json: serialize(doc.getState()),
+        updatedAt: Date.now(),
+      };
+      saveAutosave(record).catch((err) => {
         setError(err instanceof Error ? err.message : String(err));
       });
     };
@@ -57,15 +49,24 @@ export function FileMenu({ document: doc, onOpen }: FileMenuProps) {
       clearTimeout(timer);
       unsubscribe();
     };
-  }, [doc, autoSave]);
+  }, [doc, autoSave, fileName]);
 
   async function handleOpen() {
     try {
       const result = await openDpaintFile();
       if (!result) return;
       const state = deserialize(result.json);
-      filenameRef.current = result.name;
-      onOpen(new Document(state));
+      onOpen(new Document(state), result.name);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  function handleRestore(record: AutosaveRecord) {
+    try {
+      const state = deserialize(record.json);
+      onOpen(new Document(state), record.name);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -88,10 +89,10 @@ export function FileMenu({ document: doc, onOpen }: FileMenuProps) {
         const handle = await pickSaveHandle(fullName, DPAINT_PICKER_TYPES);
         if (!handle) return; // user cancelled
         await writeToHandle(handle, json);
-        filenameRef.current = handle.name;
+        onFileNameChange(handle.name);
       } else {
         downloadDpaintFile(json, fullName);
-        filenameRef.current = fullName;
+        onFileNameChange(fullName);
       }
       setError(null);
     } catch (err) {
@@ -99,7 +100,7 @@ export function FileMenu({ document: doc, onOpen }: FileMenuProps) {
     }
   }
 
-  const suggestedName = (filenameRef.current ?? DEFAULT_NAME).replace(/\.dpaint$/, "");
+  const suggestedName = (fileName ?? DEFAULT_NAME).replace(/\.dpaint$/, "");
 
   return (
     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -112,6 +113,7 @@ export function FileMenu({ document: doc, onOpen }: FileMenuProps) {
         documentHeight={doc.getState().height}
         onSave={handleSaveAs}
       />
+      <AutosaveBrowserDialog onRestore={handleRestore} />
       <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
         <input type="checkbox" checked={autoSave} onChange={(e) => setAutoSave(e.target.checked)} />
         Auto-save

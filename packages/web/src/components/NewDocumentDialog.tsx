@@ -2,7 +2,7 @@ import { MAX_SIZE } from "@dot-paint/core";
 import { type FormEvent, useRef, useState } from "react";
 
 interface NewDocumentDialogProps {
-  onCreate: (width: number, height: number) => void;
+  onCreate: (width: number, height: number, name: string | undefined) => void;
 }
 
 const PRESET_SIZES = [8, 16, 24, 32, 48, 64, 128, 256, 512];
@@ -19,9 +19,11 @@ export function NewDocumentDialog({ onCreate }: NewDocumentDialogProps) {
   const [width, setWidth] = useState(16);
   const [height, setHeight] = useState(16);
   const [square, setSquare] = useState(true);
+  const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   function open() {
+    setName("");
     setError(null);
     dialogRef.current?.showModal();
   }
@@ -53,7 +55,7 @@ export function NewDocumentDialog({ onCreate }: NewDocumentDialogProps) {
       setError(err);
       return;
     }
-    onCreate(width, height);
+    onCreate(width, height, name.trim() || undefined);
     dialogRef.current?.close();
   }
 
@@ -65,6 +67,16 @@ export function NewDocumentDialog({ onCreate }: NewDocumentDialogProps) {
       <dialog ref={dialogRef}>
         <form onSubmit={handleSubmit}>
           <h2 style={{ marginTop: 0 }}>New document</h2>
+
+          <label style={{ display: "block", marginBottom: 12 }}>
+            name (optional)
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="untitled.dpaint"
+              style={{ marginLeft: 8, width: 180 }}
+            />
+          </label>
 
           <div style={{ marginBottom: 12 }}>
             <span style={{ display: "block", marginBottom: 4, fontSize: 12, opacity: 0.7 }}>presets</span>
