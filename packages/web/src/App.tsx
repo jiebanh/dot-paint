@@ -1,6 +1,6 @@
 import type { BrushShape } from "@dot-paint/core";
 import { createDocument, deserialize, Document, serialize, TRANSPARENT_INDEX } from "@dot-paint/core";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { BUILT_IN_THEMES } from "./builtInThemes";
 import { BrushSizeControl } from "./components/BrushSizeControl";
 import { Canvas, type PaintTool, type ToolKind } from "./components/Canvas";
@@ -14,7 +14,7 @@ import { UndoRedoControls } from "./components/UndoRedoControls";
 import { ZoomControl } from "./components/ZoomControl";
 import { useDocument } from "./hooks/useDocument";
 import { isVsCodeWebview, onHostMessage, postToHost } from "./io/vscodeBridge";
-import { loadSettings, saveSettings } from "./settings";
+import { loadSettings, PANEL_IDS, saveSettings } from "./settings";
 import { autoZoom } from "./zoom";
 
 const VSCODE_SYNC_DEBOUNCE_MS = 300;
@@ -92,6 +92,80 @@ export function App() {
     }
   }
 
+  const panelContent: Record<(typeof PANEL_IDS)[number], ReactNode> = {
+    colorPicker: (
+      <ColorPickerPanel
+        paletteIndex={tool.paletteIndex}
+        color={state.theme.colors[tool.paletteIndex]}
+        disabled={tool.paletteIndex === TRANSPARENT_INDEX}
+        onPreview={(color) => setColorPreview({ paletteIndex: tool.paletteIndex, color })}
+        onCommit={(color) => {
+          doc.setThemeColor(tool.paletteIndex, color);
+          setColorPreview(null);
+        }}
+      />
+    ),
+    tool: (
+      <fieldset>
+        <legend>tool</legend>
+        {(["brush", "bucket"] as ToolKind[]).map((kind) => (
+          <label key={kind} style={{ display: "block" }}>
+            <input
+              type="radio"
+              name="tool-kind"
+              checked={tool.kind === kind}
+              onChange={() => setTool((t) => ({ ...t, kind }))}
+            />
+            {kind}
+          </label>
+        ))}
+
+        <div style={{ display: "flex", gap: 8, marginTop: 8, opacity: tool.kind === "brush" ? 1 : 0.5 }}>
+          {(["square", "circle"] as BrushShape[]).map((shape) => (
+            <label key={shape} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <input
+                type="radio"
+                name="shape"
+                disabled={tool.kind !== "brush"}
+                checked={tool.shape === shape}
+                onChange={() => setTool((t) => ({ ...t, shape }))}
+              />
+              {shape}
+            </label>
+          ))}
+        </div>
+        <div style={{ marginTop: 8 }}>
+          <div style={{ marginBottom: 4 }}>size</div>
+          <BrushSizeControl
+            size={tool.size}
+            onChange={(size) => setTool((t) => ({ ...t, size }))}
+            disabled={tool.kind !== "brush"}
+          />
+        </div>
+      </fieldset>
+    ),
+    palette: (
+      <fieldset>
+        <legend>color</legend>
+        <PaletteEditor
+          theme={state.theme}
+          selectedIndex={tool.paletteIndex}
+          onSelect={(paletteIndex) => setTool((t) => ({ ...t, paletteIndex }))}
+          colorPreview={colorPreview}
+        />
+      </fieldset>
+    ),
+    themeLibrary: (
+      <fieldset>
+        <legend>theme library</legend>
+        <ThemeLibraryPanel document={doc} currentTheme={state.theme} />
+      </fieldset>
+    ),
+  };
+
+  const leftPanels = PANEL_IDS.filter((id) => settings.panelSides[id] === "left");
+  const rightPanels = PANEL_IDS.filter((id) => settings.panelSides[id] === "right");
+
   return (
     <main style={{ fontFamily: "sans-serif", padding: 24, minHeight: "100vh", background: settings.pageBackgroundColor }}>
       <h1>dot-paint</h1>
@@ -117,6 +191,14 @@ export function App() {
       {createError && <p style={{ color: "crimson" }}>{createError}</p>}
 
       <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
+        {leftPanels.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {leftPanels.map((id) => (
+              <div key={id}>{panelContent[id]}</div>
+            ))}
+          </div>
+        )}
+
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <Canvas
             document={doc}
@@ -134,71 +216,13 @@ export function App() {
           <ZoomControl zoom={zoom} onChange={setZoom} />
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <ColorPickerPanel
-            paletteIndex={tool.paletteIndex}
-            color={state.theme.colors[tool.paletteIndex]}
-            disabled={tool.paletteIndex === TRANSPARENT_INDEX}
-            onPreview={(color) => setColorPreview({ paletteIndex: tool.paletteIndex, color })}
-            onCommit={(color) => {
-              doc.setThemeColor(tool.paletteIndex, color);
-              setColorPreview(null);
-            }}
-          />
-
-          <fieldset>
-            <legend>tool</legend>
-            {(["brush", "bucket"] as ToolKind[]).map((kind) => (
-              <label key={kind} style={{ display: "block" }}>
-                <input
-                  type="radio"
-                  name="tool-kind"
-                  checked={tool.kind === kind}
-                  onChange={() => setTool((t) => ({ ...t, kind }))}
-                />
-                {kind}
-              </label>
+        {rightPanels.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {rightPanels.map((id) => (
+              <div key={id}>{panelContent[id]}</div>
             ))}
-
-            <div style={{ display: "flex", gap: 8, marginTop: 8, opacity: tool.kind === "brush" ? 1 : 0.5 }}>
-              {(["square", "circle"] as BrushShape[]).map((shape) => (
-                <label key={shape} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  <input
-                    type="radio"
-                    name="shape"
-                    disabled={tool.kind !== "brush"}
-                    checked={tool.shape === shape}
-                    onChange={() => setTool((t) => ({ ...t, shape }))}
-                  />
-                  {shape}
-                </label>
-              ))}
-            </div>
-            <div style={{ marginTop: 8 }}>
-              <div style={{ marginBottom: 4 }}>size</div>
-              <BrushSizeControl
-                size={tool.size}
-                onChange={(size) => setTool((t) => ({ ...t, size }))}
-                disabled={tool.kind !== "brush"}
-              />
-            </div>
-          </fieldset>
-
-          <fieldset>
-            <legend>color</legend>
-            <PaletteEditor
-              theme={state.theme}
-              selectedIndex={tool.paletteIndex}
-              onSelect={(paletteIndex) => setTool((t) => ({ ...t, paletteIndex }))}
-              colorPreview={colorPreview}
-            />
-          </fieldset>
-
-          <fieldset>
-            <legend>theme library</legend>
-            <ThemeLibraryPanel document={doc} currentTheme={state.theme} />
-          </fieldset>
-        </div>
+          </div>
+        )}
       </div>
     </main>
   );
