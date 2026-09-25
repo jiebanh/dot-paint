@@ -148,6 +148,7 @@ export function App() {
       <fieldset>
         <legend>color</legend>
         <PaletteEditor
+          document={doc}
           theme={state.theme}
           selectedIndex={tool.paletteIndex}
           onSelect={(paletteIndex) => setTool((t) => ({ ...t, paletteIndex }))}
