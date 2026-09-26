@@ -1,11 +1,10 @@
 import { MAX_SIZE } from "@dot-paint/core";
 import { type FormEvent, useRef, useState } from "react";
+import { NEW_DOCUMENT_SIZE_PRESETS } from "../limits";
 
 interface NewDocumentDialogProps {
   onCreate: (width: number, height: number, name: string | undefined) => void;
 }
-
-const PRESET_SIZES = [8, 16, 24, 32, 48, 64, 128, 256, 512];
 
 function validateSize(value: number): string | null {
   if (!Number.isInteger(value) || value < 1 || value > MAX_SIZE) {
@@ -81,7 +80,7 @@ export function NewDocumentDialog({ onCreate }: NewDocumentDialogProps) {
           <div style={{ marginBottom: 12 }}>
             <span style={{ display: "block", marginBottom: 4, fontSize: 12, opacity: 0.7 }}>presets</span>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-              {PRESET_SIZES.map((size) => (
+              {NEW_DOCUMENT_SIZE_PRESETS.map((size) => (
                 <button key={size} type="button" onClick={() => applyPreset(size)}>
                   {size}
                 </button>

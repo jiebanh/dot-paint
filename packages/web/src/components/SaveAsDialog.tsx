@@ -1,8 +1,7 @@
 import { type FormEvent, useRef, useState } from "react";
+import { MAX_PNG_EXPORT_SIZE } from "../limits";
 
 export type SaveFormat = "dpaint" | "png";
-
-const MAX_OUTPUT_SIZE = 512;
 
 interface SaveAsDialogProps {
   suggestedName: string;
@@ -19,8 +18,8 @@ export function SaveAsDialog({ suggestedName, documentWidth, documentHeight, onS
   const [error, setError] = useState<string | null>(null);
 
   // Upscaling is nearest-neighbor pixel replication (core.upscaleRgba), so
-  // scale must stay a whole number - capped so neither side exceeds MAX_OUTPUT_SIZE.
-  const maxScale = Math.max(1, Math.floor(MAX_OUTPUT_SIZE / Math.max(documentWidth, documentHeight)));
+  // scale must stay a whole number - capped so neither side exceeds MAX_PNG_EXPORT_SIZE.
+  const maxScale = Math.max(1, Math.floor(MAX_PNG_EXPORT_SIZE / Math.max(documentWidth, documentHeight)));
   const clampedScale = Math.min(scale, maxScale);
   const actualWidth = documentWidth * clampedScale;
   const actualHeight = documentHeight * clampedScale;
@@ -86,7 +85,7 @@ export function SaveAsDialog({ suggestedName, documentWidth, documentHeight, onS
                 <span style={{ fontSize: 20, fontWeight: "bold", fontVariantNumeric: "tabular-nums" }}>
                   {actualWidth} × {actualHeight}
                 </span>
-                <span style={{ fontSize: 12, opacity: 0.7 }}>px output (max {MAX_OUTPUT_SIZE}px)</span>
+                <span style={{ fontSize: 12, opacity: 0.7 }}>px output (max {MAX_PNG_EXPORT_SIZE}px)</span>
               </p>
             </div>
           )}

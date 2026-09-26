@@ -5,6 +5,9 @@ data model, package layout, and the web/VSCode integration strategy. It intentio
 scopes out anything not needed for the "core feature" list; "future development" items are
 noted only where they constrain a decision made now.
 
+For "where is constant X defined", see [constants.md](./constants.md) rather than grepping -
+several are intentionally kept local to the logic that uses them rather than centralized.
+
 ## stack decisions
 
 - Language: TypeScript everywhere.
