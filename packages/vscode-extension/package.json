@@ -15,7 +15,7 @@
       {
         "viewType": "dotPaint.editor",
         "displayName": "Dot Paint",
-        "selector": [{ "filenamePattern": "*.dpaint" }]
+        "selector": [{ "filenamePattern": "*.dpaint" }, { "filenamePattern": "*.dpaint-anim" }]
       }
     ],
     "commands": [
@@ -23,12 +23,22 @@
         "command": "dotPaint.exportPng",
         "title": "Dot Paint: Export as PNG",
         "icon": "$(file-media)"
+      },
+      {
+        "command": "dotPaint.exportApng",
+        "title": "Dot Paint: Export as Animated PNG",
+        "icon": "$(device-camera-video)"
       }
     ],
     "menus": {
       "editor/title": [
         {
           "command": "dotPaint.exportPng",
+          "when": "activeCustomEditorId == 'dotPaint.editor'",
+          "group": "navigation"
+        },
+        {
+          "command": "dotPaint.exportApng",
           "when": "activeCustomEditorId == 'dotPaint.editor'",
           "group": "navigation"
         }

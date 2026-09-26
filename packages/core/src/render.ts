@@ -6,11 +6,12 @@ import { TRANSPARENT_INDEX } from "./theme";
  * identically in a browser webview and the Node VSCode extension host, and is
  * the seam a future WebAssembly implementation would replace.
  */
-export function render(doc: DotDocument): Uint8ClampedArray<ArrayBuffer> {
+export function render(doc: DotDocument, frameIndex: number = doc.activeFrameIndex): Uint8ClampedArray<ArrayBuffer> {
   const theme = doc.theme;
-  const out = new Uint8ClampedArray(doc.pixels.length * 4);
-  for (let i = 0; i < doc.pixels.length; i++) {
-    const paletteIndex = doc.pixels[i];
+  const pixels = doc.frames[frameIndex];
+  const out = new Uint8ClampedArray(pixels.length * 4);
+  for (let i = 0; i < pixels.length; i++) {
+    const paletteIndex = pixels[i];
     const o = i * 4;
     if (paletteIndex === TRANSPARENT_INDEX || paletteIndex >= theme.colors.length) {
       continue; // Uint8ClampedArray is zero-initialized: fully transparent.

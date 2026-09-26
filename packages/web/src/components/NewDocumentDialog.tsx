@@ -1,14 +1,25 @@
-import { MAX_SIZE } from "@dot-paint/core";
+import { MAX_FRAMES, MAX_SIZE } from "@dot-paint/core";
 import { type FormEvent, useRef, useState } from "react";
 import { NEW_DOCUMENT_SIZE_PRESETS } from "../limits";
 
+type DocumentType = "image" | "animation";
+
+const DEFAULT_ANIMATION_FRAME_COUNT = 2;
+
 interface NewDocumentDialogProps {
-  onCreate: (width: number, height: number, name: string | undefined) => void;
+  onCreate: (width: number, height: number, name: string | undefined, frameCount: number) => void;
 }
 
 function validateSize(value: number): string | null {
   if (!Number.isInteger(value) || value < 1 || value > MAX_SIZE) {
     return `1〜${MAX_SIZE}の整数を指定してください`;
+  }
+  return null;
+}
+
+function validateFrameCount(value: number): string | null {
+  if (!Number.isInteger(value) || value < 1 || value > MAX_FRAMES) {
+    return `フレーム数は1〜${MAX_FRAMES}の整数を指定してください`;
   }
   return null;
 }
@@ -19,10 +30,14 @@ export function NewDocumentDialog({ onCreate }: NewDocumentDialogProps) {
   const [height, setHeight] = useState(16);
   const [square, setSquare] = useState(true);
   const [name, setName] = useState("");
+  const [docType, setDocType] = useState<DocumentType>("image");
+  const [frameCount, setFrameCount] = useState(DEFAULT_ANIMATION_FRAME_COUNT);
   const [error, setError] = useState<string | null>(null);
 
   function open() {
     setName("");
+    setDocType("image");
+    setFrameCount(DEFAULT_ANIMATION_FRAME_COUNT);
     setError(null);
     dialogRef.current?.showModal();
   }
@@ -49,12 +64,12 @@ export function NewDocumentDialog({ onCreate }: NewDocumentDialogProps) {
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const err = validateSize(width) ?? validateSize(height);
+    const err = validateSize(width) ?? validateSize(height) ?? (docType === "animation" ? validateFrameCount(frameCount) : null);
     if (err) {
       setError(err);
       return;
     }
-    onCreate(width, height, name.trim() || undefined);
+    onCreate(width, height, name.trim() || undefined, docType === "animation" ? frameCount : 1);
     dialogRef.current?.close();
   }
 
@@ -76,6 +91,36 @@ export function NewDocumentDialog({ onCreate }: NewDocumentDialogProps) {
               style={{ marginLeft: 8, width: 180 }}
             />
           </label>
+
+          <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <input type="radio" name="doc-type" checked={docType === "image"} onChange={() => setDocType("image")} />
+              single image
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <input
+                type="radio"
+                name="doc-type"
+                checked={docType === "animation"}
+                onChange={() => setDocType("animation")}
+              />
+              animation
+            </label>
+          </div>
+
+          {docType === "animation" && (
+            <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <span style={{ width: 48 }}>frames</span>
+              <input
+                type="number"
+                min={1}
+                max={MAX_FRAMES}
+                value={frameCount}
+                onChange={(e) => setFrameCount(Number(e.target.value) || 1)}
+                style={{ width: 64 }}
+              />
+            </label>
+          )}
 
           <div style={{ marginBottom: 12 }}>
             <span style={{ display: "block", marginBottom: 4, fontSize: 12, opacity: 0.7 }}>presets</span>

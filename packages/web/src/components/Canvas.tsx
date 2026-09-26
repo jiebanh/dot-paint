@@ -62,10 +62,12 @@ export function Canvas({
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
 
-    let pixels = state.pixels;
+    const activeFrameIndex = state.activeFrameIndex;
+    let frames = state.frames;
     if (previewDiffs) {
-      pixels = Uint8Array.from(state.pixels);
+      const pixels = Uint8Array.from(state.frames[activeFrameIndex]);
       for (const diff of previewDiffs) pixels[diff.index] = diff.newValue;
+      frames = state.frames.map((f, i) => (i === activeFrameIndex ? pixels : f));
     }
 
     // A palette color being dragged live (not yet committed to the theme, so
@@ -79,7 +81,7 @@ export function Canvas({
       };
     }
 
-    const rgba = render({ ...state, pixels, theme });
+    const rgba = render({ ...state, frames, theme }, activeFrameIndex);
     ctx.putImageData(new ImageData(rgba, state.width, state.height), 0, 0);
   }, [state, previewDiffs, colorPreview]);
 
@@ -96,15 +98,17 @@ export function Canvas({
   function handlePointerDown(e: PointerEvent<HTMLCanvasElement>) {
     const { x, y } = cellFromPointer(e);
 
+    const activePixels = state.frames[state.activeFrameIndex];
+
     if (tool.kind === "bucket") {
       // Click to confirm, not drag: one fill is one undo step, no stroke to track.
-      const diffs = floodFill(state.pixels, state.width, state.height, x, y, tool.paletteIndex);
+      const diffs = floodFill(activePixels, state.width, state.height, x, y, tool.paletteIndex);
       if (diffs.length > 0) doc.applyEdit(diffs);
       return;
     }
 
     e.currentTarget.setPointerCapture(e.pointerId);
-    const stroke = new Stroke(state.pixels, state.width, state.height, tool.shape, tool.size, tool.paletteIndex);
+    const stroke = new Stroke(activePixels, state.width, state.height, tool.shape, tool.size, tool.paletteIndex);
     stroke.addPoint(x, y);
     strokeRef.current = stroke;
     setPreviewDiffs(stroke.finish());

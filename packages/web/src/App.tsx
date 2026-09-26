@@ -6,6 +6,8 @@ import { BrushSizeControl } from "./components/BrushSizeControl";
 import { Canvas, type PaintTool, type ToolKind } from "./components/Canvas";
 import { ColorPickerPanel } from "./components/ColorPickerPanel";
 import { FileMenu } from "./components/FileMenu";
+import { FrameStrip } from "./components/FrameStrip";
+import { normalizeProjectFileName } from "./io/fileIO";
 import { NewDocumentDialog } from "./components/NewDocumentDialog";
 import { OptionsDialog } from "./components/OptionsDialog";
 import { type ColorPreview, PaletteEditor } from "./components/PaletteEditor";
@@ -28,8 +30,8 @@ function isInitMessage(message: unknown): message is { type: "init"; json: strin
   );
 }
 
-function createDefaultDocument(width = 16, height = 16): Document {
-  return new Document(createDocument(width, height, BUILT_IN_THEMES[0]));
+function createDefaultDocument(width = 16, height = 16, frameCount = 1): Document {
+  return new Document(createDocument(width, height, BUILT_IN_THEMES[0], frameCount));
 }
 
 export function App() {
@@ -93,10 +95,10 @@ export function App() {
     };
   }, [doc]);
 
-  function handleCreate(width: number, height: number, name: string | undefined) {
+  function handleCreate(width: number, height: number, name: string | undefined, frameCount: number) {
     try {
-      setDoc(createDefaultDocument(width, height));
-      setFileName(name && (name.endsWith(".dpaint") ? name : `${name}.dpaint`));
+      setDoc(createDefaultDocument(width, height, frameCount));
+      setFileName(name ? normalizeProjectFileName(name, frameCount) : undefined);
       setCreateError(null);
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : String(err));
@@ -182,7 +184,8 @@ export function App() {
     <main style={{ fontFamily: "sans-serif", padding: 24, minHeight: "100vh", background: settings.pageBackgroundColor }}>
       <h1>dot-paint</h1>
       <p>
-        {fileName ?? "untitled.dpaint"} — {state.width}×{state.height}, theme "{state.theme.name}"
+        {fileName ?? "untitled.dpaint"} — {state.width}×{state.height}, theme "{state.theme.name}", {state.frames.length}{" "}
+        frame{state.frames.length === 1 ? "" : "s"}
       </p>
       <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
         <NewDocumentDialog onCreate={handleCreate} />
@@ -226,6 +229,7 @@ export function App() {
             guideColor={settings.guideColor}
           />
           <ZoomControl zoom={zoom} onChange={setZoom} />
+          <FrameStrip document={doc} />
         </div>
 
         {rightPanels.length > 0 && (

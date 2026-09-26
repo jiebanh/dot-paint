@@ -1,5 +1,6 @@
 export * from "./theme";
 export * from "./document";
+export * from "./apng";
 export * from "./history";
 export * from "./brush";
 export * from "./fill";

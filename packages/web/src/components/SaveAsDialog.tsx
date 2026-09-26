@@ -1,16 +1,18 @@
 import { type FormEvent, useRef, useState } from "react";
 import { MAX_PNG_EXPORT_SIZE } from "../limits";
 
-export type SaveFormat = "dpaint" | "png";
+export type SaveFormat = "dpaint" | "png" | "apng";
 
 interface SaveAsDialogProps {
   suggestedName: string;
   documentWidth: number;
   documentHeight: number;
+  /** Whether the "Animated PNG" format option is offered at all - only makes sense for a multi-frame document. */
+  isAnimation: boolean;
   onSave: (name: string, format: SaveFormat, pngScale: number) => void;
 }
 
-export function SaveAsDialog({ suggestedName, documentWidth, documentHeight, onSave }: SaveAsDialogProps) {
+export function SaveAsDialog({ suggestedName, documentWidth, documentHeight, isAnimation, onSave }: SaveAsDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [name, setName] = useState(suggestedName);
   const [format, setFormat] = useState<SaveFormat>("dpaint");
@@ -26,6 +28,7 @@ export function SaveAsDialog({ suggestedName, documentWidth, documentHeight, onS
 
   function open() {
     setName(suggestedName);
+    setFormat("dpaint");
     setScale(1);
     setError(null);
     dialogRef.current?.showModal();
@@ -58,9 +61,10 @@ export function SaveAsDialog({ suggestedName, documentWidth, documentHeight, onS
             <select value={format} onChange={(e) => setFormat(e.target.value as SaveFormat)} style={{ marginLeft: 8 }}>
               <option value="dpaint">.dpaint (project)</option>
               <option value="png">.png (image)</option>
+              {isAnimation && <option value="apng">.png (animated)</option>}
             </select>
           </label>
-          {format === "png" && (
+          {(format === "png" || format === "apng") && (
             <div style={{ marginBottom: 8 }}>
               <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 scale

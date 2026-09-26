@@ -52,7 +52,9 @@ interface Theme {
 interface DotDocument {
   width: number;                 // <= 512
   height: number;                // <= 512
-  pixels: Uint8Array;            // length = width * height, values index into theme.colors
+  frames: Uint8Array[];          // one or more frames; each length = width * height, values index into theme.colors
+  activeFrameIndex: number;      // which frame is shown/edited; not persisted (files always reopen on frame 0)
+  frameIntervalMs: number;       // playback speed, one global rate shared by all frames
   theme: Theme;                  // a self-contained copy — see "themes vs. the theme library" below
 }
 ```
@@ -71,6 +73,46 @@ interface DotDocument {
 - `Uint8Array` caps the palette at 256 colors (indices 0–255) - well above `MAX_PALETTE_SIZE`
   (64), so the pixel type doesn't need revisiting even if that ceiling is raised later. Pixel
   buffer stays small at 512×512 (256 KB max) either way.
+
+### animation (issue #35)
+
+A document is always an animation, even when it only has one frame — there is no separate
+"static image" type. `Document.applyEdit()` writes into `frames[activeFrameIndex]`; every
+other operation (undo/redo, render, flood fill, brush strokes) is frame-agnostic and just
+takes whichever `Uint8Array` it's handed, so none of that code needed to change.
+
+- `Document` exposes `setActiveFrame`, `addFrame(copyCurrent?)`, `removeFrame()`,
+  `moveFrame("left" | "right")`, and `setFrameInterval(ms)` — all undoable except
+  `setActiveFrame` (navigation, not an edit). Frame count is capped at `MAX_FRAMES` (256),
+  mirroring `MAX_PALETTE_SIZE`'s role for the palette.
+- `render(doc, frameIndex?)` takes an explicit frame index (defaulting to
+  `doc.activeFrameIndex`) rather than always rendering "the" frame — this is what lets
+  `packages/web/src/components/FrameStrip.tsx` draw a thumbnail per frame without disturbing
+  which one is actively being edited, and is the seam future per-frame export would use.
+- File format bumped to **v3**: `pixels: string` became `frames: string[]`, plus
+  `frameIntervalMs`. `activeFrameIndex` is not persisted. `deserialize()` migrates v1 and v2
+  files by wrapping their single pixel buffer into a one-element `frames` array.
+- New document creation lets the user pick **single image** vs. **animation**; animation asks
+  for an initial frame count, passed through to `createDocument(width, height, theme,
+  frameCount)`.
+- A multi-frame document saves as **`.dpaint-anim`** instead of `.dpaint` (same v3 JSON
+  schema either way — `deserialize()` doesn't care which extension it came from; the two
+  names exist purely so "is this an animation" is visible without opening the file).
+  `packages/web/src/io/fileIO.ts`'s `projectFileExtension`/`normalizeProjectFileName` decide
+  the extension from `frames.length`; the VSCode custom editor's `filenamePattern` selector
+  matches both extensions with the same provider/viewType.
+- **APNG export** (`packages/core/src/apng.ts`): `buildApngBytes()` assembles the PNG/APNG
+  chunk structure (signature, IHDR, acTL, one fcTL+IDAT/fdAT pair per frame, IEND) from
+  already-deflated frame data — pure and dependency-free, so it runs the same in both
+  runtimes. What's platform-specific is only the deflate step (PNG's IDAT/fdAT payload is a
+  zlib/RFC 1950 stream): `packages/web/src/io/apngExport.ts` uses the browser's
+  `CompressionStream("deflate")`, `packages/vscode-extension/src/exportApngCommand.ts` uses
+  `node:zlib`'s `deflateSync`. With exactly one frame, `buildApngBytes()` skips acTL/fcTL
+  and emits a perfectly ordinary (non-animated) PNG. A single frame is filtered with PNG
+  filter type 0 ("None") per scanline — simpler than Sub/Paeth, and pixel art's flat color
+  runs still deflate well without it. Verified against Pillow (which decodes APNG) as an
+  ad hoc check outside the test suite - core's own tests only assert chunk/CRC structure,
+  since parsing/inflating isn't something core needs to do itself.
 
 ### themes vs. the theme library
 
@@ -200,14 +242,17 @@ host — there's no fork between "web logic" and "extension logic," only where e
   (index 0) = 17 slots, growable up to 64 via `Document.addThemeColor()` - well within the
   `Uint8Array` index range (0–255).
 - Brushes: circle/square, adjustable integer size, precomputed offset masks.
+- Animation: 1 frame at creation, growable up to `MAX_FRAMES` (256); interval clamped to
+  `MIN_FRAME_INTERVAL_MS`–`MAX_FRAME_INTERVAL_MS` (20–10000ms).
 
 ## deferred (not designed now, flagged so today's choices don't block them)
 
 - **Keyboard-only manipulation**: current design already routes all edits through
   `applyEdit`, so a keyboard-driven cursor + "stamp here" command reuses the same path as
   pointer input — no rework anticipated.
-- **Animation (APNG)**: would extend `DotDocument` with a `frames: Uint8Array[]` (sharing
-  `width`/`height`/`themes`) instead of a single `pixels` buffer, and `version: 2` in the
-  file format. Not designed further now — revisit once the single-frame tool is solid.
+- **APNG import**: only export was built (see "animation" above) - decoding an arbitrary
+  third-party APNG back into per-frame pixel data would need a full APNG parser/inflater,
+  which is a much bigger task than encoding and wasn't asked for. `.dpaint-anim` import
+  (this app's own format) works today via the existing `deserialize()` path.
 - **WebAssembly**: the `render()` seam noted above is the intended replacement point; no
   other function is designed with this in mind yet.
