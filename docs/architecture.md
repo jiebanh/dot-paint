@@ -92,10 +92,27 @@ takes whichever `Uint8Array` it's handed, so none of that code needed to change.
 - File format bumped to **v3**: `pixels: string` became `frames: string[]`, plus
   `frameIntervalMs`. `activeFrameIndex` is not persisted. `deserialize()` migrates v1 and v2
   files by wrapping their single pixel buffer into a one-element `frames` array.
-- **Deferred**: APNG (and other multi-frame) export/import, and a dedicated animation file
-  extension, were scoped out of the first pass — implementing an APNG encoder from scratch
-  (no browser or `pngjs` support for the `acTL`/`fcTL`/`fdAT` chunks) is a substantial,
-  separable piece of work. Tracked as a follow-up once frame editing itself is validated.
+- New document creation lets the user pick **single image** vs. **animation**; animation asks
+  for an initial frame count, passed through to `createDocument(width, height, theme,
+  frameCount)`.
+- A multi-frame document saves as **`.dpaint-anim`** instead of `.dpaint` (same v3 JSON
+  schema either way — `deserialize()` doesn't care which extension it came from; the two
+  names exist purely so "is this an animation" is visible without opening the file).
+  `packages/web/src/io/fileIO.ts`'s `projectFileExtension`/`normalizeProjectFileName` decide
+  the extension from `frames.length`; the VSCode custom editor's `filenamePattern` selector
+  matches both extensions with the same provider/viewType.
+- **APNG export** (`packages/core/src/apng.ts`): `buildApngBytes()` assembles the PNG/APNG
+  chunk structure (signature, IHDR, acTL, one fcTL+IDAT/fdAT pair per frame, IEND) from
+  already-deflated frame data — pure and dependency-free, so it runs the same in both
+  runtimes. What's platform-specific is only the deflate step (PNG's IDAT/fdAT payload is a
+  zlib/RFC 1950 stream): `packages/web/src/io/apngExport.ts` uses the browser's
+  `CompressionStream("deflate")`, `packages/vscode-extension/src/exportApngCommand.ts` uses
+  `node:zlib`'s `deflateSync`. With exactly one frame, `buildApngBytes()` skips acTL/fcTL
+  and emits a perfectly ordinary (non-animated) PNG. A single frame is filtered with PNG
+  filter type 0 ("None") per scanline — simpler than Sub/Paeth, and pixel art's flat color
+  runs still deflate well without it. Verified against Pillow (which decodes APNG) as an
+  ad hoc check outside the test suite - core's own tests only assert chunk/CRC structure,
+  since parsing/inflating isn't something core needs to do itself.
 
 ### themes vs. the theme library
 
@@ -233,8 +250,9 @@ host — there's no fork between "web logic" and "extension logic," only where e
 - **Keyboard-only manipulation**: current design already routes all edits through
   `applyEdit`, so a keyboard-driven cursor + "stamp here" command reuses the same path as
   pointer input — no rework anticipated.
-- **Animation export/import**: frame editing itself is implemented (see "animation" above) -
-  still deferred is APNG (and other multi-frame format) export/import and a dedicated
-  animation file extension, since a from-scratch APNG encoder is a substantial separate task.
+- **APNG import**: only export was built (see "animation" above) - decoding an arbitrary
+  third-party APNG back into per-frame pixel data would need a full APNG parser/inflater,
+  which is a much bigger task than encoding and wasn't asked for. `.dpaint-anim` import
+  (this app's own format) works today via the existing `deserialize()` path.
 - **WebAssembly**: the `render()` seam noted above is the intended replacement point; no
   other function is designed with this in mind yet.

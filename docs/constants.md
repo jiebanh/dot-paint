@@ -65,6 +65,13 @@ above (these are meant to be changed via `OptionsDialog` and remembered, not jus
 | `GUIDE_DIVISION_OPTIONS` | Allowed guide-line division counts (powers of 2 only). |
 | `PANEL_IDS` / `PANEL_LABELS` | The sidebar panels `OptionsDialog`'s placement UI and `App.tsx`'s layout both iterate over. |
 
+## packages/web/src/io/fileIO.ts
+
+| Constant | Meaning |
+| --- | --- |
+| `PROJECT_FILE_EXTENSION` | `.dpaint` - a single-frame document. |
+| `ANIMATION_FILE_EXTENSION` | `.dpaint-anim` - a multi-frame document. Same v3 JSON schema as `.dpaint`; the two names exist only so "is this an animation" is visible without opening the file (see `docs/architecture.md`'s "animation" section). |
+
 ## Storage keys and schema versions (local to their module)
 
 Each of these is a private implementation detail of one storage module - not consolidated,

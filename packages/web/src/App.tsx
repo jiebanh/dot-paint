@@ -7,6 +7,7 @@ import { Canvas, type PaintTool, type ToolKind } from "./components/Canvas";
 import { ColorPickerPanel } from "./components/ColorPickerPanel";
 import { FileMenu } from "./components/FileMenu";
 import { FrameStrip } from "./components/FrameStrip";
+import { normalizeProjectFileName } from "./io/fileIO";
 import { NewDocumentDialog } from "./components/NewDocumentDialog";
 import { OptionsDialog } from "./components/OptionsDialog";
 import { type ColorPreview, PaletteEditor } from "./components/PaletteEditor";
@@ -97,7 +98,7 @@ export function App() {
   function handleCreate(width: number, height: number, name: string | undefined, frameCount: number) {
     try {
       setDoc(createDefaultDocument(width, height, frameCount));
-      setFileName(name && (name.endsWith(".dpaint") ? name : `${name}.dpaint`));
+      setFileName(name ? normalizeProjectFileName(name, frameCount) : undefined);
       setCreateError(null);
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : String(err));

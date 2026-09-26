@@ -34,7 +34,7 @@ export function registerExportPngCommand(provider: DotPaintEditorProvider): vsco
     png.data = Buffer.from(rgba.buffer, rgba.byteOffset, rgba.byteLength);
     const buffer = PNG.sync.write(png);
 
-    const defaultUri = doc.uri.with({ path: doc.uri.path.replace(/\.dpaint$/, ".png") });
+    const defaultUri = doc.uri.with({ path: doc.uri.path.replace(/\.dpaint(-anim)?$/, ".png") });
     const destination = await vscode.window.showSaveDialog({
       defaultUri,
       filters: { "PNG image": ["png"] },

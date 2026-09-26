@@ -4,12 +4,32 @@ export interface OpenResult {
   handle?: FileSystemFileHandle;
 }
 
+/** A single-frame document; the same v3 schema as ANIMATION_FILE_EXTENSION, just named to signal "this is a still image" at a glance. */
+export const PROJECT_FILE_EXTENSION = ".dpaint";
+/** A multi-frame document (issue #35) - same schema/deserialize() path as .dpaint, distinguished only by name/selector. */
+export const ANIMATION_FILE_EXTENSION = ".dpaint-anim";
+
 export const DPAINT_PICKER_TYPES: FilePickerAcceptType[] = [
   {
     description: "dot-paint document",
-    accept: { "application/json": [".dpaint"] },
+    accept: { "application/json": [PROJECT_FILE_EXTENSION, ANIMATION_FILE_EXTENSION] },
   },
 ];
+
+/** Which extension a document with this many frames should be saved under. */
+export function projectFileExtension(frameCount: number): string {
+  return frameCount > 1 ? ANIMATION_FILE_EXTENSION : PROJECT_FILE_EXTENSION;
+}
+
+/** Ensures `name` ends with the extension appropriate for `frameCount`, swapping out either known extension if present. */
+export function normalizeProjectFileName(name: string, frameCount: number): string {
+  const withoutExtension = name.endsWith(ANIMATION_FILE_EXTENSION)
+    ? name.slice(0, -ANIMATION_FILE_EXTENSION.length)
+    : name.endsWith(PROJECT_FILE_EXTENSION)
+      ? name.slice(0, -PROJECT_FILE_EXTENSION.length)
+      : name;
+  return `${withoutExtension}${projectFileExtension(frameCount)}`;
+}
 
 export function supportsFileSystemAccess(): boolean {
   return typeof window !== "undefined" && "showOpenFilePicker" in window;
@@ -39,7 +59,7 @@ function openViaInput(): Promise<OpenResult | null> {
   return new Promise((resolve) => {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = ".dpaint";
+    input.accept = `${PROJECT_FILE_EXTENSION},${ANIMATION_FILE_EXTENSION}`;
     input.onchange = () => {
       const file = input.files?.[0];
       if (!file) {

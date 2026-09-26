@@ -1,8 +1,17 @@
 import { deserialize, Document, serialize } from "@dot-paint/core";
 import { useEffect, useState } from "react";
+import { exportApng } from "../io/apngExport";
 import type { AutosaveRecord } from "../io/autosave";
 import { saveAutosave } from "../io/autosave";
-import { DPAINT_PICKER_TYPES, downloadDpaintFile, openDpaintFile, pickSaveHandle, supportsFileSystemAccess, writeToHandle } from "../io/fileIO";
+import {
+  DPAINT_PICKER_TYPES,
+  downloadDpaintFile,
+  normalizeProjectFileName,
+  openDpaintFile,
+  pickSaveHandle,
+  supportsFileSystemAccess,
+  writeToHandle,
+} from "../io/fileIO";
 import { exportPng } from "../io/pngExport";
 import { AutosaveBrowserDialog } from "./AutosaveBrowserDialog";
 import { type SaveFormat, SaveAsDialog } from "./SaveAsDialog";
@@ -81,9 +90,15 @@ export function FileMenu({ document: doc, fileName, onOpen, onFileNameChange }: 
         setError(null);
         return;
       }
+      if (format === "apng") {
+        await exportApng(doc.getState(), name, pngScale);
+        setError(null);
+        return;
+      }
 
-      const fullName = name.endsWith(".dpaint") ? name : `${name}.dpaint`;
-      const json = serialize(doc.getState());
+      const state = doc.getState();
+      const fullName = normalizeProjectFileName(name, state.frames.length);
+      const json = serialize(state);
 
       if (supportsFileSystemAccess()) {
         const handle = await pickSaveHandle(fullName, DPAINT_PICKER_TYPES);
@@ -100,7 +115,7 @@ export function FileMenu({ document: doc, fileName, onOpen, onFileNameChange }: 
     }
   }
 
-  const suggestedName = (fileName ?? DEFAULT_NAME).replace(/\.dpaint$/, "");
+  const suggestedName = (fileName ?? DEFAULT_NAME).replace(/\.dpaint(-anim)?$/, "");
 
   return (
     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -111,6 +126,7 @@ export function FileMenu({ document: doc, fileName, onOpen, onFileNameChange }: 
         suggestedName={suggestedName}
         documentWidth={doc.getState().width}
         documentHeight={doc.getState().height}
+        isAnimation={doc.getState().frames.length > 1}
         onSave={handleSaveAs}
       />
       <AutosaveBrowserDialog onRestore={handleRestore} />
