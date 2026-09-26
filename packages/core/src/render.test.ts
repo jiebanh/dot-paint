@@ -16,7 +16,7 @@ describe("render", () => {
   it("resolves a non-zero index through the theme's colors", () => {
     const theme = createTheme("t", "T", ["#ff0000"]);
     const doc = createDocument(1, 1, theme);
-    doc.pixels[0] = 1;
+    doc.frames[0][0] = 1;
 
     const rgba = render(doc);
 
@@ -27,11 +27,21 @@ describe("render", () => {
     const themeA = createTheme("a", "A", ["#ff0000"]);
     const themeB = createTheme("b", "B", ["#00ff00"]);
     const doc = createDocument(1, 1, themeA);
-    doc.pixels[0] = 1;
+    doc.frames[0][0] = 1;
 
     expect([...render(doc)]).toEqual([255, 0, 0, 255]);
 
     doc.theme = themeB;
     expect([...render(doc)]).toEqual([0, 255, 0, 255]);
+  });
+
+  it("renders a specific frame index, defaulting to the active frame", () => {
+    const theme = createTheme("t", "T", ["#ff0000", "#00ff00"]);
+    const doc = createDocument(1, 1, theme);
+    doc.frames.push(new Uint8Array([2]));
+    doc.frames[0][0] = 1;
+
+    expect([...render(doc)]).toEqual([255, 0, 0, 255]); // active frame (0) by default
+    expect([...render(doc, 1)]).toEqual([0, 255, 0, 255]);
   });
 });

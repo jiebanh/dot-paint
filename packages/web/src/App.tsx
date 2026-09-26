@@ -6,6 +6,7 @@ import { BrushSizeControl } from "./components/BrushSizeControl";
 import { Canvas, type PaintTool, type ToolKind } from "./components/Canvas";
 import { ColorPickerPanel } from "./components/ColorPickerPanel";
 import { FileMenu } from "./components/FileMenu";
+import { FrameStrip } from "./components/FrameStrip";
 import { NewDocumentDialog } from "./components/NewDocumentDialog";
 import { OptionsDialog } from "./components/OptionsDialog";
 import { type ColorPreview, PaletteEditor } from "./components/PaletteEditor";
@@ -182,7 +183,8 @@ export function App() {
     <main style={{ fontFamily: "sans-serif", padding: 24, minHeight: "100vh", background: settings.pageBackgroundColor }}>
       <h1>dot-paint</h1>
       <p>
-        {fileName ?? "untitled.dpaint"} — {state.width}×{state.height}, theme "{state.theme.name}"
+        {fileName ?? "untitled.dpaint"} — {state.width}×{state.height}, theme "{state.theme.name}", {state.frames.length}{" "}
+        frame{state.frames.length === 1 ? "" : "s"}
       </p>
       <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
         <NewDocumentDialog onCreate={handleCreate} />
@@ -226,6 +228,7 @@ export function App() {
             guideColor={settings.guideColor}
           />
           <ZoomControl zoom={zoom} onChange={setZoom} />
+          <FrameStrip document={doc} />
         </div>
 
         {rightPanels.length > 0 && (

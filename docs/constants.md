@@ -22,7 +22,10 @@ than centralized, since each is read by exactly one file's validation.
 | `MAX_PALETTE_SIZE` | `document.ts` | 64 | Ceiling `Document.addThemeColor()` grows a theme's `colors` array to. |
 | `PALETTE_SIZE` | `theme.ts` | 17 | Size a *new* theme starts at (1 transparent + 16 user colors) via `createTheme()` - not a ceiling, see `MAX_PALETTE_SIZE`. |
 | `TRANSPARENT_INDEX` | `theme.ts` | 0 | The pixel index that always renders transparent. |
-| `FILE_FORMAT_VERSION` | `serialize.ts` | 2 | Current `.dpaint` schema version; `deserialize()` migrates from v1. |
+| `FILE_FORMAT_VERSION` | `serialize.ts` | 3 | Current `.dpaint` schema version; `deserialize()` migrates from v1 and v2. |
+| `MAX_FRAMES` | `document.ts` | 256 | Ceiling `Document.addFrame()` grows an animation's `frames` array to. |
+| `DEFAULT_FRAME_INTERVAL_MS` | `document.ts` | 100 | Frame interval a new document starts with. |
+| `MIN_FRAME_INTERVAL_MS` / `MAX_FRAME_INTERVAL_MS` | `document.ts` | 20 / 10000 | Bounds `Document.setFrameInterval()` enforces. |
 
 ## packages/web/src/limits.ts
 

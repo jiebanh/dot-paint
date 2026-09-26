@@ -52,7 +52,9 @@ interface Theme {
 interface DotDocument {
   width: number;                 // <= 512
   height: number;                // <= 512
-  pixels: Uint8Array;            // length = width * height, values index into theme.colors
+  frames: Uint8Array[];          // one or more frames; each length = width * height, values index into theme.colors
+  activeFrameIndex: number;      // which frame is shown/edited; not persisted (files always reopen on frame 0)
+  frameIntervalMs: number;       // playback speed, one global rate shared by all frames
   theme: Theme;                  // a self-contained copy — see "themes vs. the theme library" below
 }
 ```
@@ -71,6 +73,29 @@ interface DotDocument {
 - `Uint8Array` caps the palette at 256 colors (indices 0–255) - well above `MAX_PALETTE_SIZE`
   (64), so the pixel type doesn't need revisiting even if that ceiling is raised later. Pixel
   buffer stays small at 512×512 (256 KB max) either way.
+
+### animation (issue #35)
+
+A document is always an animation, even when it only has one frame — there is no separate
+"static image" type. `Document.applyEdit()` writes into `frames[activeFrameIndex]`; every
+other operation (undo/redo, render, flood fill, brush strokes) is frame-agnostic and just
+takes whichever `Uint8Array` it's handed, so none of that code needed to change.
+
+- `Document` exposes `setActiveFrame`, `addFrame(copyCurrent?)`, `removeFrame()`,
+  `moveFrame("left" | "right")`, and `setFrameInterval(ms)` — all undoable except
+  `setActiveFrame` (navigation, not an edit). Frame count is capped at `MAX_FRAMES` (256),
+  mirroring `MAX_PALETTE_SIZE`'s role for the palette.
+- `render(doc, frameIndex?)` takes an explicit frame index (defaulting to
+  `doc.activeFrameIndex`) rather than always rendering "the" frame — this is what lets
+  `packages/web/src/components/FrameStrip.tsx` draw a thumbnail per frame without disturbing
+  which one is actively being edited, and is the seam future per-frame export would use.
+- File format bumped to **v3**: `pixels: string` became `frames: string[]`, plus
+  `frameIntervalMs`. `activeFrameIndex` is not persisted. `deserialize()` migrates v1 and v2
+  files by wrapping their single pixel buffer into a one-element `frames` array.
+- **Deferred**: APNG (and other multi-frame) export/import, and a dedicated animation file
+  extension, were scoped out of the first pass — implementing an APNG encoder from scratch
+  (no browser or `pngjs` support for the `acTL`/`fcTL`/`fdAT` chunks) is a substantial,
+  separable piece of work. Tracked as a follow-up once frame editing itself is validated.
 
 ### themes vs. the theme library
 
@@ -200,14 +225,16 @@ host — there's no fork between "web logic" and "extension logic," only where e
   (index 0) = 17 slots, growable up to 64 via `Document.addThemeColor()` - well within the
   `Uint8Array` index range (0–255).
 - Brushes: circle/square, adjustable integer size, precomputed offset masks.
+- Animation: 1 frame at creation, growable up to `MAX_FRAMES` (256); interval clamped to
+  `MIN_FRAME_INTERVAL_MS`–`MAX_FRAME_INTERVAL_MS` (20–10000ms).
 
 ## deferred (not designed now, flagged so today's choices don't block them)
 
 - **Keyboard-only manipulation**: current design already routes all edits through
   `applyEdit`, so a keyboard-driven cursor + "stamp here" command reuses the same path as
   pointer input — no rework anticipated.
-- **Animation (APNG)**: would extend `DotDocument` with a `frames: Uint8Array[]` (sharing
-  `width`/`height`/`themes`) instead of a single `pixels` buffer, and `version: 2` in the
-  file format. Not designed further now — revisit once the single-frame tool is solid.
+- **Animation export/import**: frame editing itself is implemented (see "animation" above) -
+  still deferred is APNG (and other multi-frame format) export/import and a dedicated
+  animation file extension, since a from-scratch APNG encoder is a substantial separate task.
 - **WebAssembly**: the `render()` seam noted above is the intended replacement point; no
   other function is designed with this in mind yet.
