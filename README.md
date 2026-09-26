@@ -25,6 +25,9 @@ pnpm install
 # run the web app locally (packages/web)
 pnpm run dev:web
 
+# allow access from the same LAN
+pnpm --filter @dot-paint/web run dev --host 0.0.0.0
+
 # run tests across all packages
 pnpm run test
 
