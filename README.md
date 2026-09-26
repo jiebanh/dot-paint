@@ -62,6 +62,11 @@ Then, in VSCode:
 but it only builds `packages/web` once at startup — after changing web source, re-run it (or
 `pnpm --filter @dot-paint/web run build`) to pick up the change in the webview.
 
+## samples
+
+[`samples/`](samples/) has known-good `.dpaint` / `.dpaint-anim` files for manually checking
+the file format and app behavior - see [samples/README.md](samples/README.md).
+
 ## status
 
 Early scaffold — see the repo's [issues](https://github.com/jiebanh/dot-paint/issues) for
