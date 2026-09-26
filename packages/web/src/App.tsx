@@ -54,6 +54,17 @@ export function App() {
     setZoom(autoZoom(current.width, current.height));
   }, [doc]);
 
+  // The selected palette index can outlive the palette it was chosen from - a
+  // new/opened document's theme, an applied theme, or undoing a palette-add
+  // can all be shorter than the previous theme.colors. Left alone, the next
+  // theme.colors[tool.paletteIndex] read (ColorPickerPanel) would be
+  // undefined and crash the render. Clamp back to a valid index instead.
+  useEffect(() => {
+    if (tool.paletteIndex >= state.theme.colors.length) {
+      setTool((t) => ({ ...t, paletteIndex: 1 }));
+    }
+  }, [tool.paletteIndex, state.theme.colors.length]);
+
   // In a VSCode webview, the extension host owns the file; it sends the real
   // content once this reports "ready" (a fresh blank canvas is just the
   // placeholder until that arrives).

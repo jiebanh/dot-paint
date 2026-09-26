@@ -96,8 +96,14 @@ export function ColorPickerPanel({ paletteIndex, color, disabled, onPreview, onC
   const svRef = useRef<HTMLDivElement>(null);
   const hueRef = useRef<HTMLDivElement>(null);
 
+  // Defensive fallback: `color` should always be a valid hex here, but a
+  // stale/out-of-range paletteIndex from the caller (see App.tsx's clamping
+  // effect for the real fix) would otherwise pass `undefined` and crash the
+  // hex parsing below, taking the whole render tree down with it.
+  const safeColor = disabled || !color ? "#000000" : color;
+
   const [hsv, setHsv] = useState(() => {
-    const [h, s, v] = disabled ? [0, 0, 0] : hexToHsv(color);
+    const [h, s, v] = disabled ? [0, 0, 0] : hexToHsv(safeColor);
     return { h, s, v };
   });
   const draft = hsvToHex(hsv.h, hsv.s, hsv.v);
@@ -105,9 +111,9 @@ export function ColorPickerPanel({ paletteIndex, color, disabled, onPreview, onC
 
   useEffect(() => {
     if (disabled) return;
-    const [h, s, v] = hexToHsv(color);
+    const [h, s, v] = hexToHsv(safeColor);
     setHsv({ h, s, v });
-    setHexInput(color);
+    setHexInput(safeColor);
     // Resync whenever the edited swatch or its committed color changes (switching
     // swatches, undo/redo) - not while dragging, since color only changes on commit.
   }, [color, disabled, paletteIndex]);
