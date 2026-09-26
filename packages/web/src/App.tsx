@@ -229,7 +229,13 @@ export function App() {
             guideColor={settings.guideColor}
           />
           <ZoomControl zoom={zoom} onChange={setZoom} />
-          <FrameStrip document={doc} />
+          {state.frames.length > 1 ? (
+            <FrameStrip document={doc} />
+          ) : (
+            <button type="button" onClick={() => doc.addFrame()} title="add a second frame to start an animation">
+              + Add frame (start animation)
+            </button>
+          )}
         </div>
 
         {rightPanels.length > 0 && (
