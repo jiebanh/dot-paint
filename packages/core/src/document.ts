@@ -36,14 +36,17 @@ export interface DotDocument {
   theme: Theme;
 }
 
-export function createDocument(width: number, height: number, theme: Theme): DotDocument {
+export function createDocument(width: number, height: number, theme: Theme, frameCount = 1): DotDocument {
   if (width < 1 || width > MAX_SIZE || height < 1 || height > MAX_SIZE) {
     throw new RangeError(`document size must be between 1 and ${MAX_SIZE}, got ${width}x${height}`);
+  }
+  if (!Number.isInteger(frameCount) || frameCount < 1 || frameCount > MAX_FRAMES) {
+    throw new RangeError(`frameCount must be an integer between 1 and ${MAX_FRAMES}, got ${frameCount}`);
   }
   return {
     width,
     height,
-    frames: [new Uint8Array(width * height)],
+    frames: Array.from({ length: frameCount }, () => new Uint8Array(width * height)),
     activeFrameIndex: 0,
     frameIntervalMs: DEFAULT_FRAME_INTERVAL_MS,
     theme: cloneTheme(theme),

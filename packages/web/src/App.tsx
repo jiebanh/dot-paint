@@ -29,8 +29,8 @@ function isInitMessage(message: unknown): message is { type: "init"; json: strin
   );
 }
 
-function createDefaultDocument(width = 16, height = 16): Document {
-  return new Document(createDocument(width, height, BUILT_IN_THEMES[0]));
+function createDefaultDocument(width = 16, height = 16, frameCount = 1): Document {
+  return new Document(createDocument(width, height, BUILT_IN_THEMES[0], frameCount));
 }
 
 export function App() {
@@ -94,9 +94,9 @@ export function App() {
     };
   }, [doc]);
 
-  function handleCreate(width: number, height: number, name: string | undefined) {
+  function handleCreate(width: number, height: number, name: string | undefined, frameCount: number) {
     try {
-      setDoc(createDefaultDocument(width, height));
+      setDoc(createDefaultDocument(width, height, frameCount));
       setFileName(name && (name.endsWith(".dpaint") ? name : `${name}.dpaint`));
       setCreateError(null);
     } catch (err) {

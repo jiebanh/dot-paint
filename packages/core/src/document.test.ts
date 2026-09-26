@@ -13,6 +13,26 @@ describe("createDocument", () => {
     expect(() => createDocument(0, 10, theme)).toThrow(RangeError);
     expect(() => createDocument(MAX_SIZE + 1, 10, theme)).toThrow(RangeError);
   });
+
+  it("defaults to a single blank frame", () => {
+    const theme = createTheme("t", "T", []);
+    const doc = createDocument(4, 4, theme);
+    expect(doc.frames).toHaveLength(1);
+  });
+
+  it("can start with multiple blank, independent frames", () => {
+    const theme = createTheme("t", "T", []);
+    const doc = createDocument(2, 2, theme, 3);
+    expect(doc.frames).toHaveLength(3);
+    doc.frames[0][0] = 1;
+    expect(doc.frames[1][0]).toBe(0); // each frame is its own buffer, not a shared reference
+  });
+
+  it("rejects a frameCount outside 1..MAX_FRAMES", () => {
+    const theme = createTheme("t", "T", []);
+    expect(() => createDocument(4, 4, theme, 0)).toThrow(RangeError);
+    expect(() => createDocument(4, 4, theme, MAX_FRAMES + 1)).toThrow(RangeError);
+  });
 });
 
 describe("Document", () => {
