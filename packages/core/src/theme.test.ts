@@ -14,8 +14,8 @@ describe("createTheme", () => {
     expect(theme.colors[TRANSPARENT_INDEX]).toBeDefined();
   });
 
-  it("rejects more than 32 user colors", () => {
-    const tooMany = Array.from({ length: 33 }, (_, i) => `#00000${i}`);
+  it("rejects more user colors than the initial palette can hold", () => {
+    const tooMany = Array.from({ length: PALETTE_SIZE }, (_, i) => `#${i.toString(16).padStart(6, "0")}`);
     expect(() => createTheme("t", "Test", tooMany)).toThrow(RangeError);
   });
 });

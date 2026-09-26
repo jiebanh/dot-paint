@@ -1,7 +1,11 @@
 export type ColorHex = string;
 
-/** index 0 (reserved transparent) + 32 user colors. */
-export const PALETTE_SIZE = 33;
+/**
+ * index 0 (reserved transparent) + 16 user colors - the size a newly created
+ * theme starts at. Not a hard ceiling: Document.addThemeColor() can grow a
+ * theme's colors array beyond this, up to MAX_PALETTE_SIZE (document.ts).
+ */
+export const PALETTE_SIZE = 17;
 
 export const TRANSPARENT_INDEX = 0;
 
