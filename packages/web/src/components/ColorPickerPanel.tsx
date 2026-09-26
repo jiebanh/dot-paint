@@ -68,6 +68,7 @@ function isValidHex(value: string): boolean {
 }
 
 const PANEL_STYLE: React.CSSProperties = {
+  position: "relative",
   width: 220,
   padding: 12,
   background: "#fff",
@@ -75,6 +76,9 @@ const PANEL_STYLE: React.CSSProperties = {
   border: "1px solid #999",
   borderRadius: 6,
   boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+};
+
+const CONTENT_STYLE: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
   gap: 10,
@@ -92,8 +96,14 @@ export function ColorPickerPanel({ paletteIndex, color, disabled, onPreview, onC
   const svRef = useRef<HTMLDivElement>(null);
   const hueRef = useRef<HTMLDivElement>(null);
 
+  // Defensive fallback: `color` should always be a valid hex here, but a
+  // stale/out-of-range paletteIndex from the caller (see App.tsx's clamping
+  // effect for the real fix) would otherwise pass `undefined` and crash the
+  // hex parsing below, taking the whole render tree down with it.
+  const safeColor = disabled || !color ? "#000000" : color;
+
   const [hsv, setHsv] = useState(() => {
-    const [h, s, v] = disabled ? [0, 0, 0] : hexToHsv(color);
+    const [h, s, v] = disabled ? [0, 0, 0] : hexToHsv(safeColor);
     return { h, s, v };
   });
   const draft = hsvToHex(hsv.h, hsv.s, hsv.v);
@@ -101,20 +111,12 @@ export function ColorPickerPanel({ paletteIndex, color, disabled, onPreview, onC
 
   useEffect(() => {
     if (disabled) return;
-    const [h, s, v] = hexToHsv(color);
+    const [h, s, v] = hexToHsv(safeColor);
     setHsv({ h, s, v });
-    setHexInput(color);
+    setHexInput(safeColor);
     // Resync whenever the edited swatch or its committed color changes (switching
     // swatches, undo/redo) - not while dragging, since color only changes on commit.
   }, [color, disabled, paletteIndex]);
-
-  if (disabled) {
-    return (
-      <div style={PANEL_STYLE}>
-        <p style={{ margin: 0, fontSize: 12, opacity: 0.7 }}>Select a color swatch to edit its color.</p>
-      </div>
-    );
-  }
 
   function updateHsv(next: Partial<typeof hsv>) {
     const merged = { ...hsv, ...next };
@@ -164,6 +166,10 @@ export function ColorPickerPanel({ paletteIndex, color, disabled, onPreview, onC
 
   return (
     <div style={PANEL_STYLE}>
+      {/* Same DOM/size whether disabled or not, so the panels below never shift
+          position when switching to/from the transparent swatch - just dimmed
+          and inert, with a message overlaid on top. */}
+      <div style={{ ...CONTENT_STYLE, opacity: disabled ? 0.35 : 1, pointerEvents: disabled ? "none" : undefined }}>
       <div
         ref={svRef}
         {...dragHandlers((e) => {
@@ -239,6 +245,26 @@ export function ColorPickerPanel({ paletteIndex, color, disabled, onPreview, onC
           style={{ flex: 1, fontFamily: "monospace", minWidth: 0 }}
         />
       </div>
+      </div>
+
+      {disabled && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 12,
+            textAlign: "center",
+            pointerEvents: "none",
+          }}
+        >
+          <p style={{ margin: 0, fontSize: 12, background: "#fff", padding: "2px 6px", borderRadius: 4 }}>
+            Select a color swatch to edit its color.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

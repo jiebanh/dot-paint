@@ -1,9 +1,7 @@
-const MAX_SIZE = 128;
-
-const PRESET_SIZES = [1, 2, 4, 8, 16, 32, 64, 128] as const;
+import { BRUSH_SIZE_PRESETS, MAX_BRUSH_SIZE } from "../limits";
 
 function clamp(value: number): number {
-  return Math.max(1, Math.min(MAX_SIZE, Math.round(value) || 1));
+  return Math.max(1, Math.min(MAX_BRUSH_SIZE, Math.round(value) || 1));
 }
 
 interface BrushSizeControlProps {
@@ -16,7 +14,7 @@ export function BrushSizeControl({ size, onChange, disabled = false }: BrushSize
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4, opacity: disabled ? 0.5 : 1 }}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-        {PRESET_SIZES.map((preset) => (
+        {BRUSH_SIZE_PRESETS.map((preset) => (
           <button
             key={preset}
             type="button"
@@ -32,7 +30,7 @@ export function BrushSizeControl({ size, onChange, disabled = false }: BrushSize
         <input
           type="range"
           min={1}
-          max={MAX_SIZE}
+          max={MAX_BRUSH_SIZE}
           value={size}
           disabled={disabled}
           onChange={(e) => onChange(clamp(Number(e.target.value)))}
@@ -41,7 +39,7 @@ export function BrushSizeControl({ size, onChange, disabled = false }: BrushSize
         <input
           type="number"
           min={1}
-          max={MAX_SIZE}
+          max={MAX_BRUSH_SIZE}
           value={size}
           disabled={disabled}
           onChange={(e) => onChange(clamp(Number(e.target.value)))}

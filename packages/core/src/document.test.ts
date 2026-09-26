@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createDocument, Document, MAX_SIZE } from "./document";
+import { createDocument, Document, MAX_PALETTE_SIZE, MAX_SIZE } from "./document";
 import { createTheme } from "./theme";
 
 function makeDoc(width = 4, height = 4) {
@@ -136,5 +136,30 @@ describe("Document", () => {
     doc.applyTheme(libraryTheme);
     doc.setThemeColor(1, "#654321");
     expect(libraryTheme.colors[1]).toBe("#00ff00");
+  });
+
+  it("appends a new palette slot and can undo/redo it", () => {
+    const doc = makeDoc();
+    const before = doc.getState().theme.colors.length;
+
+    doc.addThemeColor("#123456");
+    expect(doc.getState().theme.colors).toHaveLength(before + 1);
+    expect(doc.getState().theme.colors[before]).toBe("#123456");
+
+    doc.undo();
+    expect(doc.getState().theme.colors).toHaveLength(before);
+
+    doc.redo();
+    expect(doc.getState().theme.colors).toHaveLength(before + 1);
+    expect(doc.getState().theme.colors[before]).toBe("#123456");
+  });
+
+  it("refuses to grow the palette past MAX_PALETTE_SIZE", () => {
+    const doc = makeDoc();
+    while (doc.getState().theme.colors.length < MAX_PALETTE_SIZE) {
+      doc.addThemeColor();
+    }
+    expect(() => doc.addThemeColor()).toThrow(RangeError);
+    expect(doc.getState().theme.colors).toHaveLength(MAX_PALETTE_SIZE);
   });
 });

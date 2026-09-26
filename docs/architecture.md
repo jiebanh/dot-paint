@@ -5,6 +5,9 @@ data model, package layout, and the web/VSCode integration strategy. It intentio
 scopes out anything not needed for the "core feature" list; "future development" items are
 noted only where they constrain a decision made now.
 
+For "where is constant X defined", see [constants.md](./constants.md) rather than grepping -
+several are intentionally kept local to the logic that uses them rather than centralized.
+
 ## stack decisions
 
 - Language: TypeScript everywhere.
@@ -35,7 +38,7 @@ fall out of the same mechanism (re-resolve index -> color) instead of needing tw
 type PixelIndex = number;        // 0 = transparent, always
 type ColorHex = string;          // "#rrggbb"
 
-const PALETTE_SIZE = 33;         // index 0 (transparent) + 32 user colors
+const PALETTE_SIZE = 17;         // index 0 (transparent) + 16 user colors, at creation time
 
 interface Theme {
   id: string;
@@ -58,14 +61,16 @@ interface DotDocument {
   it can't drift when the theme changes. `colors[0]`'s content is irrelevant (the renderer
   short-circuits on index 0 before ever reading it); it exists only so every other lookup is
   a direct `colors[pixelIndex]` with no `-1` offset to get wrong.
-- 32 is the palette size the UI is designed around (a 32-swatch grid, `colors[1..32]`, plus
-  a fixed transparent swatch for index 0) — not a hard ceiling in the data model.
+- 16 is the palette size a new theme starts with (`colors[1..16]`, plus a fixed transparent
+  swatch for index 0) — not a hard ceiling. `Document.addThemeColor()` appends further slots
+  on request, up to `MAX_PALETTE_SIZE` (64, in `document.ts`); the palette editor UI's own
+  "+" button is the usual way to reach that.
 - "The color palette" the user paints with **is** `document.theme.colors`. Editing a swatch
   mutates that array in place; every pixel holding that index re-resolves to the new color
   on next render. No separate palette-vs-theme sync needed.
-- `Uint8Array` caps the palette at 256 colors (indices 0–255). 33 leaves ample headroom, so
-  the pixel type doesn't need revisiting even if the swatch count grows later. Pixel buffer
-  stays small at 512×512 (256 KB max) either way.
+- `Uint8Array` caps the palette at 256 colors (indices 0–255) - well above `MAX_PALETTE_SIZE`
+  (64), so the pixel type doesn't need revisiting even if that ceiling is raised later. Pixel
+  buffer stays small at 512×512 (256 KB max) either way.
 
 ### themes vs. the theme library
 
@@ -191,8 +196,9 @@ host — there's no fork between "web logic" and "extension logic," only where e
 ## sizing & constraints recap
 
 - Canvas: up to 512×512, indexed pixel buffer -> 256 KB worst case, PNG output 512×512 RGBA.
-- Palette: 32 user colors per theme (indices 1–32) + reserved transparent (index 0) = 33
-  slots, well within the `Uint8Array` index range (0–255).
+- Palette: a new theme starts with 16 user colors (indices 1–16) + reserved transparent
+  (index 0) = 17 slots, growable up to 64 via `Document.addThemeColor()` - well within the
+  `Uint8Array` index range (0–255).
 - Brushes: circle/square, adjustable integer size, precomputed offset masks.
 
 ## deferred (not designed now, flagged so today's choices don't block them)

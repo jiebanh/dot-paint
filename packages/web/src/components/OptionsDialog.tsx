@@ -1,5 +1,7 @@
 import { useRef } from "react";
-import { type AppSettings, DEFAULT_SETTINGS, GUIDE_DIVISION_OPTIONS } from "../settings";
+import { type AppSettings, DEFAULT_SETTINGS, GUIDE_DIVISION_OPTIONS, PANEL_IDS, PANEL_LABELS, type PanelSide } from "../settings";
+
+const PANEL_SIDES: PanelSide[] = ["left", "right"];
 
 interface OptionsDialogProps {
   settings: AppSettings;
@@ -116,6 +118,26 @@ export function OptionsDialog({ settings, onChange }: OptionsDialogProps) {
             onChange={(e) => update("pageBackgroundColor", e.target.value)}
           />
         </label>
+
+        <fieldset style={{ marginBottom: 12 }}>
+          <legend>panel placement</legend>
+          {PANEL_IDS.map((id) => (
+            <div key={id} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
+              <span style={{ width: 110 }}>{PANEL_LABELS[id]}</span>
+              {PANEL_SIDES.map((side) => (
+                <label key={side} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <input
+                    type="radio"
+                    name={`panel-side-${id}`}
+                    checked={settings.panelSides[id] === side}
+                    onChange={() => update("panelSides", { ...settings.panelSides, [id]: side })}
+                  />
+                  {side}
+                </label>
+              ))}
+            </div>
+          ))}
+        </fieldset>
 
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           <button type="button" onClick={() => onChange(DEFAULT_SETTINGS)}>

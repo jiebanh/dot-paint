@@ -3,6 +3,9 @@ import { cloneTheme, type ColorHex, type Theme } from "./theme";
 
 export const MAX_SIZE = 512;
 
+/** A theme's colors array can grow up to this many entries (including the reserved transparent slot 0). */
+export const MAX_PALETTE_SIZE = 64;
+
 export interface DotDocument {
   width: number;
   height: number;
@@ -54,7 +57,12 @@ interface ThemeApplied {
   newTheme: Theme;
 }
 
-type HistoryEntry = PixelEdit | ThemeColorEdit | ThemeApplied;
+interface ThemeColorAdded {
+  type: "themeColorAdded";
+  color: ColorHex;
+}
+
+type HistoryEntry = PixelEdit | ThemeColorEdit | ThemeApplied | ThemeColorAdded;
 
 /**
  * Mutable wrapper around a DotDocument. Framework-agnostic: web binds to it via
@@ -127,6 +135,11 @@ export class Document {
       this.state.theme.colors[entry.paletteIndex] = direction === "undo" ? entry.prevColor : entry.newColor;
       return;
     }
+    if (entry.type === "themeColorAdded") {
+      if (direction === "undo") this.state.theme.colors.pop();
+      else this.state.theme.colors.push(entry.color);
+      return;
+    }
     this.state.theme = direction === "undo" ? entry.prevTheme : entry.newTheme;
   }
 
@@ -149,6 +162,16 @@ export class Document {
     if (prevColor === color) return;
     theme.colors[paletteIndex] = color;
     this.history.push({ type: "themeColor", paletteIndex, prevColor, newColor: color });
+    this.commit();
+  }
+
+  /** Appends a new slot to the current theme's palette. The new index is `getState().theme.colors.length - 1` right after this returns. */
+  addThemeColor(color: ColorHex = "#000000"): void {
+    if (this.state.theme.colors.length >= MAX_PALETTE_SIZE) {
+      throw new RangeError(`a theme cannot have more than ${MAX_PALETTE_SIZE} colors`);
+    }
+    this.state.theme.colors.push(color);
+    this.history.push({ type: "themeColorAdded", color });
     this.commit();
   }
 }
